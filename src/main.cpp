@@ -1,4 +1,7 @@
-#include "Hooks.h"
+#include "FlashlightHandler.h"
+#include "EffectHandler.h"
+#include "CellHandler.h"
+#include "Papyrus.h"
 
 namespace
 {
@@ -35,17 +38,18 @@ namespace
 		switch (a_msg->type)
 		{
 			case F4SE::MessagingInterface::kGameDataReady:
-				Hooks::Hook();
+				FlashlightHandler::Initialize();
+				EffectHandler::Initialize();
+				CellHandler::Initialize();
 				break;
 			case F4SE::MessagingInterface::kPostLoadGame:
-				Hooks::UpdatePlayerLevel();
 				break;
 			default:
 				break;
 		}
 	}
 
-	extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Query(const F4SE::QueryInterface * a_f4se, F4SE::PluginInfo * a_info)
+	extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Query(const F4SE::QueryInterface* a_f4se, F4SE::PluginInfo* a_info)
 	{
 		a_info->infoVersion = F4SE::PluginInfo::kVersion;
 		a_info->name = Version::PROJECT.data();
@@ -57,7 +61,7 @@ namespace
 		}
 
 		const auto ver = a_f4se->RuntimeVersion();
-		if (ver < F4SE::RUNTIME_1_10_162) {
+		if (ver < F4SE::RUNTIME_1_10_163) {
 			logger::critical("unsupported runtime v{}", ver.string());
 			return false;
 		}
@@ -65,16 +69,14 @@ namespace
 		return true;
 	}
 
-	extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadInterface * a_f4se)
+	extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadInterface* a_f4se)
 	{
+		F4SE::Init(a_f4se);
+		F4SE::AllocTrampoline(256);
+
 		InitializeLog();
 		logger::info(FMT_STRING("{} v{}"), Version::PROJECT.data(), Version::MAJOR);
 		logger::info("Game version : {}", a_f4se->RuntimeVersion().string());
-
-		F4SE::Init(a_f4se);
-		F4SE::AllocTrampoline(1 * 1024);
-
-		logger::info("hello world!");
 
 		if (!F4SE::GetMessagingInterface()->RegisterListener(MessageHandler))
 		{
@@ -82,6 +84,28 @@ namespace
 			return false;
 		}
 
+		const auto papyrus = F4SE::GetPapyrusInterface();
+		if (!papyrus || !papyrus->Register(Papyrus::RegisterFunctions))
+		{
+			logger::critical("Cannot register Papyrus native functions!");
+			return false;
+		}
+		
 		return true;
 	}
+
+	extern "C" DLLEXPORT constinit auto F4SEPlugin_Version = []() noexcept {
+		F4SE::PluginVersionData data{};
+
+		data.PluginName(Version::PROJECT.data());
+		data.PluginVersion(Version::MAJOR);
+		data.AuthorName("ForestJ316");
+		data.UsesAddressLibrary(true);
+		data.UsesSigScanning(false);
+		data.IsLayoutDependent(true);
+		data.HasNoStructUse(false);
+		data.CompatibleVersions({ F4SE::RUNTIME_1_10_163 });
+
+		return data;
+	}();
 }

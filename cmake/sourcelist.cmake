@@ -1,5 +1,13 @@
 set(SOURCES
 	src/PCH.h
 	src/main.cpp
-	src/Hooks.h
+	src/FlashlightHandler.h
+	src/FlashlightHandler.cpp
+	src/EffectHandler.h
+	src/EffectHandler.cpp
+	src/CellHandler.h
+	src/CellHandler.cpp
+	src/Papyrus.h
+	src/Papyrus.cpp
+	include/randutils.hpp
 )
