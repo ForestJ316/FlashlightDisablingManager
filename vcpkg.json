@@ -2,13 +2,11 @@
   "name": "flashlightdisablingmanager",
   "version-string": "1.0.0",
   "homepage": "https://github.com/ForestJ316/FlashlightDisablingManager",
-  "license": "MIT",
+  "license": "GPL-3.0",
   "dependencies": [
-    "boost-stl-interfaces",
     "fmt",
-    "rsm-mmio",
+    "mmio",
     "simpleini",
-    "rapidcsv",
     "spdlog"
   ],
   "builtin-baseline": "9224b3bbd8df24999d85720b1d005dd6f969ade0"
