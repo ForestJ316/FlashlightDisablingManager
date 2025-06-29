@@ -1,0 +1,71 @@
+#pragma once
+#include <unordered_map>
+
+class FlashlightHandler : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
+{
+private:
+	using EventResult = RE::BSEventNotifyControl;
+
+public:
+	static FlashlightHandler* GetSingleton()
+	{
+		static FlashlightHandler singleton;
+		return std::addressof(singleton);
+	}
+
+	static void Initialize();
+
+	EventResult ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*);
+
+	void TurnOnFlashlight();
+	void TurnOffFlashlight();
+	void ResetVars(bool a_fullDefault);
+
+private:
+	// Hooked funcs
+	// Order of funcs on pipboy light: PipboyLightTaskUnpack -> PlayPipboyAudio -> NotifyPipboyLightEvent
+	static void PipboyLightTaskUnpack(RE::PlayerCharacter* a_player, bool a_unk);
+	static inline REL::Relocation<decltype(PipboyLightTaskUnpack)> _PipboyLightTaskUnpack;
+
+	static void PlayPipboyAudio(const char* a1);
+	static inline REL::Relocation<decltype(PlayPipboyAudio)> _PlayPipboyAudio;
+
+	static void NotifyPipboyLightEventLock(RE::BSSpinLock* a1, const char* a2);
+	static inline REL::Relocation<decltype(NotifyPipboyLightEventLock)> _NotifyPipboyLightEventLock;
+
+	// Vfunc
+	static void Update(RE::PlayerCharacter* a_player, float a_delta);
+	static inline REL::Relocation<decltype(Update)> _Update;
+
+	struct FlickerDataDefaults
+	{
+		// On time min/max (for random)
+		float minOn;
+		float maxOn;
+		// Off time min/max (for random)
+		float minOff;
+		float maxOff;
+	};
+	struct FlickerData
+	{
+		FlickerData(const FlickerDataDefaults& cycleDefaults);
+		// Randomized values
+		float timeOn;
+		float timeOff;
+	};
+	std::unordered_map<int, std::map<int, FlickerDataDefaults>> FlickerList;
+	std::map<int, FlickerData> Flicker;
+
+	void InitFlickerList();
+
+	void InitFlashlightFlicker(std::string a_flickerType);
+	
+	bool bWasFlashlightOn = false;
+
+	static inline std::string sFlickerType = "";
+	static inline float fTimer = 0.f;
+	static inline float fNextFlicker = 0.f;
+	static inline std::queue<bool> bQueuedToggle;
+
+	static inline std::string sForceOnOff = "";
+};

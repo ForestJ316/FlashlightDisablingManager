@@ -5,6 +5,8 @@
 #include <RE/Fallout.h>
 #include <REL/Relocation.h>
 
+#include <SimpleIni.h>
+
 #ifdef NDEBUG
 #	include <spdlog/sinks/basic_file_sink.h>
 #else
@@ -15,7 +17,6 @@
 using namespace std::literals;
 
 namespace logger = F4SE::log;
-
 namespace util
 {
 	using F4SE::stl::report_and_fail;

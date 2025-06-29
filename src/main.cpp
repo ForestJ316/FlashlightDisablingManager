@@ -1,4 +1,7 @@
-#include "Hooks.h"
+#include "FlashlightHandler.h"
+#include "CellHandler.h"
+#include "DisableEffectHandler.h"
+#include "WeatherEffectHandler.h"
 
 namespace
 {
@@ -12,7 +15,7 @@ namespace
 			util::report_and_fail("Failed to find standard logging directory"sv);
 		}
 
-		*path /= fmt::format("{}.log"sv, Version::PROJECT.data());
+		*path /= fmt::format("{}.log"sv, Version::NAME.data());
 		auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path->string(), true);
 #endif
 
@@ -35,20 +38,25 @@ namespace
 		switch (a_msg->type)
 		{
 			case F4SE::MessagingInterface::kGameDataReady:
-				Hooks::Hook();
+				FlashlightHandler::Initialize();
+				CellHandler::Initialize();
+				DisableEffectHandler::Initialize();
+				WeatherEffectHandler::Initialize();
 				break;
+			case F4SE::MessagingInterface::kPreLoadGame:
+				FlashlightHandler::GetSingleton()->ResetVars(true);
+				DisableEffectHandler::GetSingleton()->ResetVars();
 			case F4SE::MessagingInterface::kPostLoadGame:
-				Hooks::UpdatePlayerLevel();
-				break;
+				WeatherEffectHandler::GetSingleton()->ApplyWeatherCheckToPlayer();
 			default:
 				break;
 		}
 	}
 
-	extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Query(const F4SE::QueryInterface * a_f4se, F4SE::PluginInfo * a_info)
+	extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Query(const F4SE::QueryInterface* a_f4se, F4SE::PluginInfo* a_info)
 	{
 		a_info->infoVersion = F4SE::PluginInfo::kVersion;
-		a_info->name = Version::PROJECT.data();
+		a_info->name = Version::NAME.data();
 		a_info->version = Version::MAJOR;
 
 		if (a_f4se->IsEditor()) {
@@ -57,7 +65,7 @@ namespace
 		}
 
 		const auto ver = a_f4se->RuntimeVersion();
-		if (ver < F4SE::RUNTIME_1_10_162) {
+		if (ver < F4SE::RUNTIME_1_10_163) {
 			logger::critical("unsupported runtime v{}", ver.string());
 			return false;
 		}
@@ -65,23 +73,34 @@ namespace
 		return true;
 	}
 
-	extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadInterface * a_f4se)
+	extern "C" DLLEXPORT bool F4SEAPI F4SEPlugin_Load(const F4SE::LoadInterface* a_f4se)
 	{
-		InitializeLog();
-		logger::info(FMT_STRING("{} v{}"), Version::PROJECT.data(), Version::MAJOR);
-		logger::info("Game version : {}", a_f4se->RuntimeVersion().string());
-
 		F4SE::Init(a_f4se);
-		F4SE::AllocTrampoline(1 * 1024);
+		F4SE::AllocTrampoline(256);
 
-		logger::info("hello world!");
+		InitializeLog();
+		logger::info("{}: {}.{}.{}", Version::NAME.data(), Version::MAJOR, Version::MINOR, Version::PATCH);
+		logger::info("Game version: {}", a_f4se->RuntimeVersion().string());
 
-		if (!F4SE::GetMessagingInterface()->RegisterListener(MessageHandler))
-		{
-			logger::info("Cannot register listener!");
+		if (!F4SE::GetMessagingInterface()->RegisterListener(MessageHandler)) {
+			logger::critical("Cannot register listener!");
 			return false;
-		}
-
+		}		
 		return true;
 	}
+
+	extern "C" DLLEXPORT constinit auto F4SEPlugin_Version = []() noexcept {
+		F4SE::PluginVersionData data{};
+
+		data.PluginName(Version::NAME.data());
+		data.PluginVersion(Version::MAJOR);
+		data.AuthorName("ForestJ316");
+		data.UsesAddressLibrary(true);
+		data.UsesSigScanning(false);
+		data.IsLayoutDependent(true);
+		data.HasNoStructUse(false);
+		data.CompatibleVersions({ F4SE::RUNTIME_1_10_163 });
+
+		return data;
+	}();
 }
