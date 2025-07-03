@@ -1,6 +1,7 @@
 {
   "name": "flashlightdisablingmanagement",
   "version-string": "1.0.0",
+  "homepage": "https://github.com/ForestJ316/FlashlightDisablingManagement",
   "license": "MIT",
   "dependencies": [
     "boost-stl-interfaces",

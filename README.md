@@ -5,13 +5,13 @@
 	* Add the environment variable `VCPKG_ROOT` with the value as the path to the folder containing vcpkg
 * [Visual Studio Community 2022](https://visualstudio.microsoft.com/)
 	* Desktop development with C++
-* [CommonLibF4](https://github.com/powerof3/CommonLibF4)
-	* Add the environment variable `CommonLibF4Path` with the value as the path to the folder containing CommonLibF4
 
 ## Building
 ```
 git clone https://github.com/ForestJ316/FlashlightDisablingManagement
 cd FlashlightDisablingManagement
+git submodule init
+git submodule update
 
 cmake --preset vs2022-windows-vcpkg
 cmake --build build --config Release
