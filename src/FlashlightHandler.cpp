@@ -9,9 +9,9 @@ float FlashlightHandler::GetRandomFloat(float min, float max)
 	return uni_dist;
 }
 
-std::uint8_t FlashlightHandler::GetRandomInt8(std::uint8_t min, std::uint8_t max)
+int FlashlightHandler::GetRandomInt(int min, int max)
 {
-	float uni_dist = rng.uniform(min, max);
+	int uni_dist = rng.uniform(min, max);
 	return uni_dist;
 }
 
@@ -19,12 +19,18 @@ std::uint8_t FlashlightHandler::GetRandomInt8(std::uint8_t min, std::uint8_t max
 void FlashlightHandler::InitFlickerList()
 {
 	auto& flickerList = FlickerList;
-	// Try 1 cycle for now
+	// minRadius, maxRadius, minOn, maxOn, minOff, maxOff
 	// 1st Cycle
 	flickerList[1] = {
-		{ 1, {0.75, 0.9, 0.1, 0.2, 0.1, 0.2} },
-		{ 2, {0.6, 0.75, 0.1, 0.2, 0.1, 0.2} },
-		{ 3, {0.5, 0.6, 0.1, 0.2, 0.1, 0.2} }
+		{ 1, { 0.6f, 0.75f, 0.1f, 0.2f, 0.1f, 0.2f } },
+		{ 2, { 0.6f, 0.7f, 0.07f, 0.12f, 0.07f, 0.12f } },
+		{ 3, { 0.3f, 0.5f, 0.07f, 0.12f, 0.07f, 0.12f } },
+		{ 4, { 0.3f, 0.4f, 0.05f, 0.1f, 0.05f, 0.1f } }
+	};
+	flickerList[2] = {
+		{ 1, { 0.9f, 1.0f, 0.15f, 0.2f, 0.15f, 0.2f } },
+		{ 2, { 0.35f, 0.6f, 0.1f, 0.15f, 0.1f, 0.15f } },
+		{ 3, { 0.2f, 0.3f, 0.1f, 0.15f, 0.1f, 0.15f } }
 	};
 }
 
@@ -35,30 +41,17 @@ void FlashlightHandler::Initialize()
 	if (UI) {
 		UI->RegisterSink<RE::MenuOpenCloseEvent>(FlashlightHandler::GetSingleton());
 	}
+	// Play Pipboy Audio
+	_PlayPipboyAudio = F4SE::GetTrampoline().write_call<5>(REL::ID(520007).address() + 0x23, PlayPipboyAudio);
 	// Hook GenDynamic to get the TESObjectLIGH form
 	_GenerateLight = F4SE::GetTrampoline().write_call<5>(REL::ID(1304102).address() + 0x28C, GenerateLight);
+	// Hook Notify Light Event to stop regular functionality while flickering
+	_NotifyPipboyLightEvent = F4SE::GetTrampoline().write_call<5>(REL::ID(1304102).address() + 0x472, NotifyPipboyLightEvent);
 	// Hooked function into toggling the pipboy light with hotkey
 	_HandlePipboyLightHotkey = F4SE::GetTrampoline().write_call<5>(REL::ID(181358).address() + 0x14A, HandlePipboyLightHotkey);
-
-	//auto baseAddress = REX::W32::GetModuleHandleA("Fallout4.exe");
-
-	//auto func_start = (char*)baseAddress + 0xD65A10;
-
-	//int64_t addr = (char*)baseAddress + 0xD65A10;
-
-	//_QThread = (std::uint32_t(*))func_start;
-
-	//int64_t addr = (int64_t)func_start;
-	/*auto baseAddress = REX::W32::GetModuleHandleA("Fallout4.exe");
-	auto func_start = (char*)baseAddress + 0xD65A10;
-	uintptr_t addr = (uintptr_t)func_start;*/
-	// Test threadID
-	//_SetThread = F4SE::GetTrampoline().write_call<6>(addr, SetThread);
-
 	// Vfunc hook OnUpdate
 	_Update = REL::Relocation<uintptr_t>(RE::VTABLE::PlayerCharacter[0]).write_vfunc(0xCF, Update);
 
-	//FlashlightHandler::GetSingleton()->InitRNG();
 	FlashlightHandler::GetSingleton()->InitFlickerList();
 
 	logger::info("...FlashlightHandler initialized.");
@@ -66,141 +59,42 @@ void FlashlightHandler::Initialize()
 
 FlashlightHandler::EventResult FlashlightHandler::ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*)
 {
-	// Also check in case Pipboy Menu was opened during flickering, then ignore close event
-	if (!a_event.opening && a_event.menuName == "PipboyMenu"sv && FlashlightHandler::GetSingleton()->bWasFlashlightOn && !bShouldFlicker) {
+	// Check in case Pipboy Menu was opened during flickering, then ignore close event
+	if (!a_event.opening && a_event.menuName == "PipboyMenu"sv && FlashlightHandler::GetSingleton()->bWasFlashlightOn && sFlickerType == "") {
 		// Flashlight turned off while in Pipboy Menu
 		if (RE::PlayerCharacter::GetSingleton()->IsPipboyLightOn()) {
-			logger::info("Turning OFF Flashlight..."); // DEBUG
-			// Basic for now (without flicker)
-			QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
+			InitFlashlightFlicker("Off");
 		}
 		// Flashlight turned on while in Pipboy Menu
 		else if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount == 0) {
 			FlashlightHandler::GetSingleton()->bWasFlashlightOn = false;
-			logger::info("Turning ON Flashlight..."); // DEBUG
-			// Basic for now (without flicker)
-			QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
+			InitFlashlightFlicker("On");
 		}
 	}
 	return EventResult::kContinue;
-}
-
-void FlashlightHandler::Update(RE::PlayerCharacter* a_player, float a_delta)
-{
-	_Update(a_player, a_delta);
-
-
-	// Testing
-	/*if (bDisabled) {
-		timer += *f_SecondsSinceLastFrame_RealTime;
-		if (timer >= 2.f) {
-			if (!a_player->IsPipboyLightOn()) {
-				//static REL::Relocation<uint32_t*> threadID{ REL::ID(1370673) };
-				//*threadID = REX::W32::GetCurrentThreadId();
-				//a_player->ShowPipboyLight(true, false);
-				QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
-				logger::info("calclight: {}", a_player->currentProcess->middleHigh->calcLight);
-				auto tpLight = a_player->thirdPersonLight.get();
-				auto fpLight = a_player->firstPersonLight.get();
-				auto pipboyLight = a_player->pipboyLight.get();
-				if (pipboyLight) {
-					logger::info("setting 1st person light and 3rd person light to pipboy light");
-					fpLight = pipboyLight;
-					tpLight = pipboyLight;
-					//a_player->firstPersonLight = a_player->thirdPersonLight;
-				}
-				logger::info("Turning on");
-			}
-			else {
-				//a_player->ShowPipboyLight(false, false);
-				QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
-				logger::info("Turning off");
-			}
-			timer = 0.f;
-		}
-	}*/
-	
-	/*
-	//if (bIsEffectOn && ) {
-	timer += *f_SecondsSinceLastFrame_RealTime;
-	// On Effect Start
-	if (bIsEffectOn && bWasFlashlightOn && !bDisabled) {
-		// Flicker it
-		
-		FlickerFlashlight(a_player, timer);
-		logger::info("in flickering");
-	}
-
-	// On trying to enable flashlight when it is disabled
-
-	if (timer >= 5.f) {
-		//TurnOffFlashlight();
-		timer = 0.f;
-	}
-	*/
-	//}
-	//logger::info("realtime: {}", *f_SecondsSinceLastFrame_RealTime);
-	
-}
-
-std::map<int, void*> testArr;
-
-RE::BSLight* FlashlightHandler::GenerateLight(RE::TESObjectLIGH* a1, __int64 a2, RE::NiNode* a3, bool a4, bool a5, bool a6, RE::BSLight** a7, float a8, bool a9)
-{
-	logger::info("In GenLight");
-	//logger::info("a1 fade: {}, a2: {}, a3: {}, a4: {}, a5: {}, a6: {}, a8: {}, a9: {}"sv, a1->fade, a2, a3->GetName(), a4, a5, a6, a8, a9);
-	auto currentThreadID = REX::W32::GetCurrentThreadId();
-	logger::info("Current Thread ID is: {}", currentThreadID);
-	//a1->fade = 0.5;
-	
-	//flashlightObject = a1;
-
-	//bDisabled = true; // For testing
-	//auto taskQueue = RE::TaskQueueInterface::GetSingleton();
-	//logger::info("thread before set is: {}", taskQueue->QProcessingThread());
-	//taskQueue->SetProcessingThread(currentThreadID);
-	
-
-
-	//logger::info("thread after set is: {}", taskQueue->QProcessingThread());
-	//SetThread(currentThreadID);
-
-	//logger::info("Task Thread ID is: {}", test);
-
-
-	return _GenerateLight(a1, a2, a3, a4, a5, a6, a7, a8, a9);
-}
-
-void FlashlightHandler::HandlePipboyLightHotkey(RE::TaskQueueInterface* a1)
-{
-	logger::info("Attempting to toggle Pipboy Light on or off."); // DEBUG
-	if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount > 0) {
-		// Do flicker
-		// DEBUG
-		/*for (int i = 0; i < 20; ++i) {
-			auto test = FlashlightHandler::GetSingleton()->GetRandomFloat(1.f, 20.f);
-			logger::info("i is: {}, random float between 1-20 is: {}", i, test);
-		}*/
-		FlickerFlashlight(RE::PlayerCharacter::GetSingleton(), "Regular");
-	}
-	else {
-		QueuedTogglePipboyLight(a1);
-	}
 }
 
 void FlashlightHandler::TurnOnFlashlight()
 {
 	auto a_player = RE::PlayerCharacter::GetSingleton();
 	// Turn on only if it was on before
-	if (!a_player->IsPipboyLightOn() && FlashlightHandler::GetSingleton()->bWasFlashlightOn) {
-		// If Pipboy Menu is open then it will get enabled on menu close
-		if (!RE::UI::GetSingleton()->GetMenuOpen("PipboyMenu"sv)) {
+	if (FlashlightHandler::GetSingleton()->bWasFlashlightOn) {
+		// If it's currently flickering then turn the flashlight on after the flicker
+		if (sFlickerType == "Off" || sFlickerType == "Hotkey") {
+			if (sFlickerType == "Hotkey") {
+				sFlickerType = "Off";
+			}
+			sForceOnOff = "ForceOn";
 			FlashlightHandler::GetSingleton()->bWasFlashlightOn = false;
-			logger::info("Turning ON Flashlight..."); // DEBUG
-			// Basic for now (without flicker)
-			QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
 		}
-	}
+		else if (!a_player->IsPipboyLightOn()) {
+			// If Pipboy Menu is open then it will get enabled on menu close
+			if (!RE::UI::GetSingleton()->GetMenuOpen("PipboyMenu"sv)) {
+				FlashlightHandler::GetSingleton()->bWasFlashlightOn = false;
+				InitFlashlightFlicker("On");
+			}
+		}
+	}	
 }
 
 void FlashlightHandler::TurnOffFlashlight()
@@ -208,30 +102,165 @@ void FlashlightHandler::TurnOffFlashlight()
 	auto a_player = RE::PlayerCharacter::GetSingleton();
 	// IsPipboyLightOn() can return true while flickering, so have an extra flag for multiple effect toggles
 	// The flag will also serve as a check whether the flashlight was on before
-	if ((a_player->IsPipboyLightOn() || RE::PipboyManager::GetSingleton()->wasPipboyLightActive) && !FlashlightHandler::GetSingleton()->bWasFlashlightOn) {
-		FlashlightHandler::GetSingleton()->bWasFlashlightOn = true;
-		// Flashlight is always off in Pipboy Menu, so have to do it on menu close instead
-		if (a_player->IsPipboyLightOn()) {
-			logger::info("Turning OFF Flashlight..."); // DEBUG
-			// Basic for now (without flicker)
-			QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
+	if (!FlashlightHandler::GetSingleton()->bWasFlashlightOn) {
+		// If it's currently flickering then turn the flashlight off after the flicker
+		if (sFlickerType == "On") {
+			sForceOnOff = "ForceOff";
+			FlashlightHandler::GetSingleton()->bWasFlashlightOn = true;
+		}
+		else if (a_player->IsPipboyLightOn() || RE::PipboyManager::GetSingleton()->wasPipboyLightActive) {
+			FlashlightHandler::GetSingleton()->bWasFlashlightOn = true;
+			// Flashlight is always off in Pipboy Menu, so have to do it on menu close instead
+			if (a_player->IsPipboyLightOn()) {
+				InitFlashlightFlicker("Off");
+			}
 		}
 	}
 }
 
-void FlashlightHandler::FlickerFlashlight(RE::PlayerCharacter* a_player, std::string a_flickerType)
+void FlashlightHandler::HandlePipboyLightHotkey(RE::TaskQueueInterface* a1)
 {
-	// Add regular flicker for now
-	// Have to add a check in case the time randomized to before TaskQueueInterface toggled the flashlight
-	// In which case keep checking it every x amount of seconds (not every frame) until it's valid and can do the next cycle
-	if (a_flickerType == "Regular") {
-		iChosenCycle = FlashlightHandler::GetSingleton()->GetRandomInt8(1, FlashlightHandler::GetSingleton()->FlickerList.size());
-		if (a_player->IsPipboyLightOn()) {
-
+	// Don't mess with the flashlight during flickering
+	if (sFlickerType == "") {
+		if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount > 0) {
+			// If flashlight somehow got turned on
+			if (RE::PlayerCharacter::GetSingleton()->IsPipboyLightOn()) {
+				QueuedTogglePipboyLight(a1);
+			}
+			InitFlashlightFlicker("Hotkey");
 		}
-		else {
-
+		else if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount == 0) {
+			QueuedTogglePipboyLight(a1);
 		}
-		bShouldFlicker = true;
+	}
+}
+
+void FlashlightHandler::InitFlashlightFlicker(std::string a_flickerType)
+{
+	auto flashlightHandler = FlashlightHandler::GetSingleton();
+	auto& flickerList = flashlightHandler->FlickerList;
+	auto iRandomFlicker = flashlightHandler->GetRandomInt(1, (int)flickerList.size());
+	if (flickerList.find(iRandomFlicker) != flickerList.end()) {
+		auto& chosenFlickerCycle = flickerList.find(iRandomFlicker)->second;
+		for (const auto& cycleData : chosenFlickerCycle) {
+			flashlightHandler->Flicker.insert({ cycleData.first, cycleData.second });
+		}
+		sFlickerType = a_flickerType;
+		QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
+	}
+}
+
+void FlashlightHandler::PlayPipboyAudio(const char* a1)
+{
+	auto flashlightHandler = FlashlightHandler::GetSingleton();
+	// If there is no disabling effect then play audio like regular
+	if (flashlightHandler->Flicker.empty()
+		// Or if turning on, then play audio on first On action, skip last Off action
+		// Except if turning off while flashlight is flickering on (can race for double audio, but rare enough compromise)
+		|| (sFlickerType == "On" && flashlightHandler->Flicker.size() == 1 && sForceOnOff != "ForceOff")
+		// Or if turning off, then play audio on last Off action
+		// Except if turning on while flashlight is flickering off (can race for double audio, but rare enough compromise)
+		|| (sFlickerType == "Off" && flashlightHandler->Flicker.size() == 1 && RE::PlayerCharacter::GetSingleton()->IsPipboyLightOn() && sForceOnOff != "ForceOn")) {
+		_PlayPipboyAudio(a1);
+	}
+}
+
+RE::BSTEventSource<RE::PipboyLightEvent>* FlashlightHandler::NotifyPipboyLightEvent(RE::BSTEventSource<RE::PipboyLightEvent>* a1, const RE::PipboyLightEvent& a2)
+{
+	if (sFlickerType != "") {
+		auto flashlightHandler = FlashlightHandler::GetSingleton();
+		auto currentCycle = flashlightHandler->Flicker.begin();
+		if (currentCycle != flashlightHandler->Flicker.end()) {
+			auto a_player = RE::PlayerCharacter::GetSingleton();
+			// IsPipboyLightOn() is set before the Notify, so can catch on turn on or turn off
+			if (a_player->IsPipboyLightOn()) {
+				fNextFlicker = currentCycle->second.timeOn;
+				// Skip the last Off call
+				// If turned off while flickering on then do last Off call
+				if (sFlickerType == "On" && flashlightHandler->Flicker.size() == 1) {
+					flashlightHandler->Flicker.erase(currentCycle);
+					sFlickerType = "";
+					fNextFlicker = 0.f;
+					fTimer = 0.f;
+					std::string wasForceType = sForceOnOff;
+					sForceOnOff = "";
+					// If got turned off while flickering to on, do another regular toggle
+					// (can be double audio with last On call, but it's rare enough case and compromise for potential racing)
+					if (wasForceType == "ForceOff") {
+						QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
+						return nullptr;
+					}
+					return _NotifyPipboyLightEvent(a1, a2);
+				}
+			}
+			else {
+				fNextFlicker = currentCycle->second.timeOff;
+				// Cycle ends when flashlight turns off
+				flashlightHandler->Flicker.erase(currentCycle);
+				// If the whole cycle ended then stop checking OnUpdate
+				if (flashlightHandler->Flicker.empty()) {
+					std::string wasFlicker = sFlickerType;
+					sFlickerType = "";
+					fNextFlicker = 0.f;
+					fTimer = 0.f;
+					std::string wasForceType = sForceOnOff;
+					sForceOnOff = "";
+					// If got turned on while flickering to off, do another regular toggle
+					// (can be double audio on last Off call, but it's rare enough case and compromise for potential racing)
+					if (wasForceType == "ForceOn") {
+						QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
+						return nullptr;
+					}
+					// When turning flashlight off, send Notify at end of flicker
+					if (wasFlicker == "Off") {
+						return _NotifyPipboyLightEvent(a1, a2);
+					}					
+				}
+			}
+			return nullptr;
+		}
+	}
+	return _NotifyPipboyLightEvent(a1, a2);
+}
+
+RE::BSLight* FlashlightHandler::GenerateLight(RE::TESObjectLIGH* a1, __int64 a2, RE::NiNode* a3, bool a4, bool a5, bool a6, RE::BSLight** a7, float a8, bool a9)
+{
+	auto flashlightHandler = FlashlightHandler::GetSingleton();
+	// Store the default radius
+	if (flashlightHandler->iDefaultRadius == 0) {
+		flashlightHandler->iDefaultRadius = a1->data.radius;
+	}
+	// If flashlight turning on then change radius appropriately
+	if (!RE::PlayerCharacter::GetSingleton()->IsPipboyLightOn()) {
+		auto currentCycle = flashlightHandler->Flicker.begin();
+		// If flashlight currently flickering then change radius appropriately
+		if (currentCycle != flashlightHandler->Flicker.end()) {
+			// If turning on then skip the last off call
+			a1->data.radius = (uint32_t)round(currentCycle->second.newRadius * flashlightHandler->iDefaultRadius);
+		}
+		// Otherwise change back to default
+		else if (a1->data.radius != flashlightHandler->iDefaultRadius) {
+			a1->data.radius = flashlightHandler->iDefaultRadius;
+			flashlightHandler->iDefaultRadius = 0;
+		}
+		// If flashlight turning on then skip last off call
+		if (sFlickerType == "On" && flashlightHandler->Flicker.size() == 1) {
+			a1->data.radius = flashlightHandler->iDefaultRadius;
+			flashlightHandler->iDefaultRadius = 0;
+		}
+	}
+	return _GenerateLight(a1, a2, a3, a4, a5, a6, a7, a8, a9);
+}
+
+void FlashlightHandler::Update(RE::PlayerCharacter* a_player, float a_delta)
+{
+	_Update(a_player, a_delta);
+
+	if (sFlickerType != "") {
+		fTimer += *f_SecondsSinceLastFrame_RealTime;
+		if (fNextFlicker > 0.f && fTimer >= fNextFlicker) {
+			QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
+			fTimer = 0.f;
+		}
 	}
 }

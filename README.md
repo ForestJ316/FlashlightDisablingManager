@@ -10,8 +10,8 @@
 
 ## Building
 ```
-git clone https://github.com/ForestJ316/FlashlightDisabilityFramework
-cd FlashlightDisabilityFramework
+git clone https://github.com/ForestJ316/FlashlightDisablingManagement
+cd FlashlightDisablingManagement
 
 cmake --preset vs2022-windows-vcpkg
 cmake --build build --config Release

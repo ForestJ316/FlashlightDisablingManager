@@ -1,7 +1,6 @@
 #include "FlashlightHandler.h"
 #include "EffectHandler.h"
 #include "CellHandler.h"
-#include "Papyrus.h"
 
 namespace
 {
@@ -42,8 +41,6 @@ namespace
 				EffectHandler::Initialize();
 				CellHandler::Initialize();
 				break;
-			case F4SE::MessagingInterface::kPostLoadGame:
-				break;
 			default:
 				break;
 		}
@@ -80,17 +77,9 @@ namespace
 
 		if (!F4SE::GetMessagingInterface()->RegisterListener(MessageHandler))
 		{
-			logger::info("Cannot register listener!");
+			logger::critical("Cannot register listener!");
 			return false;
-		}
-
-		const auto papyrus = F4SE::GetPapyrusInterface();
-		if (!papyrus || !papyrus->Register(Papyrus::RegisterFunctions))
-		{
-			logger::critical("Cannot register Papyrus native functions!");
-			return false;
-		}
-		
+		}		
 		return true;
 	}
 

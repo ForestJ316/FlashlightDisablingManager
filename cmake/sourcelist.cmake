@@ -7,7 +7,5 @@ set(SOURCES
 	src/EffectHandler.cpp
 	src/CellHandler.h
 	src/CellHandler.cpp
-	src/Papyrus.h
-	src/Papyrus.cpp
 	include/randutils.hpp
 )

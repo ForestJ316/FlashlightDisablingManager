@@ -14,6 +14,7 @@ static float* f_SecondsSinceLastFrame_RealTime = (float*)REL::ID(1013228).addres
 typedef void(_fastcall* tQueuedTogglePipboyLight)(RE::TaskQueueInterface*);
 static REL::Relocation<tQueuedTogglePipboyLight> QueuedTogglePipboyLight{ REL::ID(588241) };
 
+
 class FlashlightHandler : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
 {
 private:
@@ -25,7 +26,7 @@ public:
 		static FlashlightHandler singleton;
 		return std::addressof(singleton);
 	}
-	
+
 	static void Initialize();
 
 	EventResult ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*);
@@ -36,11 +37,18 @@ public:
 private:
 	randutils::default_rng rng;
 	float GetRandomFloat(float min, float max);
-	std::uint8_t GetRandomInt8(std::uint8_t min, std::uint8_t max);
+	int GetRandomInt(int min, int max);
 
+	// Order of funcs on pipboy light: HandlePipboyLightHotkey -> PlayPipboyAudio -> GenerateLight -> NotifyPipboyLightEvent
 	// Hooked funcs
+	static void PlayPipboyAudio(const char* a1);
+	static inline REL::Relocation<decltype(PlayPipboyAudio)> _PlayPipboyAudio;
+
 	static RE::BSLight* GenerateLight(RE::TESObjectLIGH* a1, __int64 a2, RE::NiNode* a3, bool a4, bool a5, bool a6, RE::BSLight** a7, float a8, bool a9);
 	static inline REL::Relocation<decltype(GenerateLight)> _GenerateLight;
+
+	static RE::BSTEventSource<RE::PipboyLightEvent>* NotifyPipboyLightEvent(RE::BSTEventSource<RE::PipboyLightEvent>* a1, const RE::PipboyLightEvent& a2);
+	static inline REL::Relocation<decltype(NotifyPipboyLightEvent)> _NotifyPipboyLightEvent;
 
 	static void HandlePipboyLightHotkey(RE::TaskQueueInterface* a1);
 	static inline REL::Relocation<decltype(HandlePipboyLightHotkey)> _HandlePipboyLightHotkey;
@@ -49,18 +57,17 @@ private:
 	static void Update(RE::PlayerCharacter* a_player, float a_delta);
 	static inline REL::Relocation<decltype(Update)> _Update;
 
-	static void FlickerFlashlight(RE::PlayerCharacter* a_player, std::string a_flickerType);
-
-	//static std::vector<uint16_t>::iterator GetUniqueIDPosition(std::vector<uint16_t>& a_vector, uint16_t a_uniqueID);
+	static void InitFlashlightFlicker(std::string a_flickerType);
 	
+
 	static inline RE::TESObjectLIGH* flashlightObject;
-
-	
 
 	bool bWasFlashlightOn = false;
 
+
+
 	void InitFlickerList();
-	struct FlickerCycle
+	struct FlickerDataDefaults
 	{
 		// Light radius min/max percentage of default radius (for random)
 		float minRadius;
@@ -72,10 +79,26 @@ private:
 		float minOff;
 		float maxOff;
 	};
-	std::unordered_map<std::uint8_t, std::unordered_map<std::uint8_t, FlickerCycle>> FlickerList;
-	
-	static inline bool bShouldFlicker = false;
-	static inline float fFlickerTimer = 0.f;
-	static inline std::uint8_t iChosenCycle = 0;
-	static inline std::uint8_t iCycleCounter = 0;
+	std::unordered_map<int, std::map<int, FlickerDataDefaults>> FlickerList;
+
+	struct FlickerData
+	{
+		FlickerData(const FlickerDataDefaults& cycleDefaults) {
+			newRadius = FlashlightHandler::GetSingleton()->GetRandomFloat(cycleDefaults.minRadius, cycleDefaults.maxRadius);
+			timeOn = FlashlightHandler::GetSingleton()->GetRandomFloat(cycleDefaults.minOn, cycleDefaults.maxOn);
+			timeOff = FlashlightHandler::GetSingleton()->GetRandomFloat(cycleDefaults.minOff, cycleDefaults.maxOff);
+		}
+		// Randomized values
+		float newRadius;
+		float timeOn;
+		float timeOff;
+	};
+	std::map<int, FlickerData> Flicker;
+
+	static inline std::string sFlickerType = "";
+	static inline float fTimer = 0.f;
+	static inline float fNextFlicker = 0.f;
+	std::uint32_t iDefaultRadius = 0;
+
+	static inline std::string sForceOnOff = "";
 };

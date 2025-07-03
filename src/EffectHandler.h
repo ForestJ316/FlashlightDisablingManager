@@ -20,4 +20,20 @@ private:
 	static inline REL::Relocation<decltype(OnEffectFinish)> _OnEffectFinish;
 
 	static inline RE::EffectSetting* FlashlightEffectID;
+
+	std::string sActionToDoAfterMenu = "";
+
+	class FaderMenuEvent : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
+	{
+	private:
+		using EventResult = RE::BSEventNotifyControl;
+
+	public:
+		static FaderMenuEvent* GetSingleton()
+		{
+			static FaderMenuEvent singleton;
+			return std::addressof(singleton);
+		}
+		EventResult ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*);
+	};
 };

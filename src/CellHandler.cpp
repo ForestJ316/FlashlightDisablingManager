@@ -11,7 +11,6 @@ void CellHandler::Initialize()
 		ini.SetAllowKeyOnly(true);
 		ini.LoadFile(path.string().c_str());
 
-		// Test
 		CSimpleIniA::TNamesDepend keys;
 		ini.GetAllKeys("Cell Forms", keys);
 		for (CSimpleIniA::TNamesDepend::const_iterator it = keys.begin(); it != keys.end(); ++it) {
@@ -23,14 +22,12 @@ void CellHandler::Initialize()
 	
 	auto dataHandler = RE::TESDataHandler::GetSingleton();
 	if (dataHandler) {
-		CellSpell = dataHandler->LookupForm<RE::SpellItem>(0x00801, "Flashlight Disability Framework.esp");
+		CellSpell = dataHandler->LookupForm<RE::SpellItem>(0x801, "Flashlight Disabling Management.esp");
 		if (!CellSpell) {
-			logger::critical("Failed to initialize FDF_CellSpell");
+			logger::critical("Failed to initialize FDM_CellSpell");
 		}
 	}
-
 	RE::PlayerCharacter::GetSingleton()->RE::BSTEventSource<RE::BGSActorCellEvent>::RegisterSink(CellHandler::GetSingleton());
-
 	const auto UI = RE::UI::GetSingleton();
 	if (UI) {
 		UI->RegisterSink<RE::MenuOpenCloseEvent>(FaderMenuEvent::GetSingleton());
@@ -48,7 +45,7 @@ CellHandler::EventResult CellHandler::ProcessEvent(const RE::BGSActorCellEvent& 
 		if (DisabledCells.find(a_event.cellID) != DisabledCells.end()) {
 			cellHandler->bEnteredDisabledCell = true;
 			// Catch-all if cell changed without a Loading Menu
-			if (!UI->GetMenuOpen("LoadingMenu"sv) && !ActorHasSpell(a_player, CellHandler::CellSpell)) {
+			if ((!UI->GetMenuOpen("LoadingMenu"sv) || !UI->GetMenuOpen("FaderMenu"sv)) && !ActorHasSpell(a_player, CellHandler::CellSpell)) {
 				ActorAddSpell(a_player, CellHandler::CellSpell);
 			}
 		}
@@ -57,7 +54,7 @@ CellHandler::EventResult CellHandler::ProcessEvent(const RE::BGSActorCellEvent& 
 			if (cellHandler->bEnteredDisabledCell) {
 				cellHandler->bEnteredDisabledCell = false;
 				// Remove spell if no Loading Menu open, otherwise it will be removed after Fader Menu closes
-				if (!UI->GetMenuOpen("LoadingMenu"sv) && ActorHasSpell(a_player, CellHandler::CellSpell)) {
+				if ((!UI->GetMenuOpen("LoadingMenu"sv) || !UI->GetMenuOpen("FaderMenu"sv)) && ActorHasSpell(a_player, CellHandler::CellSpell)) {
 					ActorRemoveSpell(RE::PlayerCharacter::GetSingleton(), CellSpell);
 				}
 			}
@@ -66,10 +63,9 @@ CellHandler::EventResult CellHandler::ProcessEvent(const RE::BGSActorCellEvent& 
 	return EventResult::kContinue;
 }
 
-FaderMenuEvent::EventResult FaderMenuEvent::ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*)
+CellHandler::FaderMenuEvent::EventResult CellHandler::FaderMenuEvent::ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*)
 {
 	if (!a_event.opening && a_event.menuName == "FaderMenu"sv) {
-		logger::info("Fader Menu off"); // DEBUG
 		auto cellHandler = CellHandler::GetSingleton();
 		auto a_player = RE::PlayerCharacter::GetSingleton();
 		if (cellHandler->bEnteredDisabledCell && !ActorHasSpell(a_player, CellHandler::CellSpell)) {

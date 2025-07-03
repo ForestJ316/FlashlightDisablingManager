@@ -33,18 +33,18 @@ public:
 
 private:
 	static inline std::unordered_set<std::uint32_t> DisabledCells;
-};
 
-class FaderMenuEvent : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
-{
-private:
-	using EventResult = RE::BSEventNotifyControl;
-
-public:
-	static FaderMenuEvent* GetSingleton()
+	class FaderMenuEvent : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
 	{
-		static FaderMenuEvent singleton;
-		return std::addressof(singleton);
-	}
-	EventResult ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*);
+	private:
+		using EventResult = RE::BSEventNotifyControl;
+
+	public:
+		static FaderMenuEvent* GetSingleton()
+		{
+			static FaderMenuEvent singleton;
+			return std::addressof(singleton);
+		}
+		EventResult ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*);
+	};
 };
