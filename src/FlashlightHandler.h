@@ -31,13 +31,15 @@ public:
 
 	EventResult ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*);
 
-	static void TurnOnFlashlight();
-	static void TurnOffFlashlight();
+	void TurnOnFlashlight();
+	void TurnOffFlashlight();
+
+	void ResetVars(bool a_loadGame);
 
 private:
 	randutils::default_rng rng;
-	float GetRandomFloat(float min, float max);
-	int GetRandomInt(int min, int max);
+	float GetRandomFloat(float a_min, float a_max);
+	int GetRandomInt(int a_min, int a_max);
 
 	// Order of funcs on pipboy light: HandlePipboyLightHotkey -> PlayPipboyAudio -> GenerateLight -> NotifyPipboyLightEvent
 	// Hooked funcs
@@ -59,12 +61,7 @@ private:
 
 	static void InitFlashlightFlicker(std::string a_flickerType);
 	
-
-	static inline RE::TESObjectLIGH* flashlightObject;
-
 	bool bWasFlashlightOn = false;
-
-
 
 	void InitFlickerList();
 	struct FlickerDataDefaults

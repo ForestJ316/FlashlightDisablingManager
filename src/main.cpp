@@ -41,6 +41,8 @@ namespace
 				EffectHandler::Initialize();
 				CellHandler::Initialize();
 				break;
+			case F4SE::MessagingInterface::kPreLoadGame:
+				FlashlightHandler::GetSingleton()->ResetVars(true);
 			default:
 				break;
 		}
