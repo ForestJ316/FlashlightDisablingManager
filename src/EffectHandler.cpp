@@ -10,7 +10,7 @@ void EffectHandler::Initialize()
 
 	auto dataHandler = RE::TESDataHandler::GetSingleton();
 	if (dataHandler) {
-		FlashlightEffectID = dataHandler->LookupForm<RE::EffectSetting>(0x800, "Flashlight Disabling Management.esp");
+		FlashlightEffectID = dataHandler->LookupForm<RE::EffectSetting>(0x800, "Flashlight Disabling Manager.esm");
 		if (!FlashlightEffectID) {
 			logger::critical("Failed to initialize FDM_Flashlight Magic Effect");
 		}

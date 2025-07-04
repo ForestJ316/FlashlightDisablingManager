@@ -22,7 +22,7 @@ void CellHandler::Initialize()
 	
 	auto dataHandler = RE::TESDataHandler::GetSingleton();
 	if (dataHandler) {
-		CellSpell = dataHandler->LookupForm<RE::SpellItem>(0x801, "Flashlight Disabling Management.esp");
+		CellSpell = dataHandler->LookupForm<RE::SpellItem>(0x801, "Flashlight Disabling Manager.esm");
 		if (!CellSpell) {
 			logger::critical("Failed to initialize FDM_CellSpell");
 		}

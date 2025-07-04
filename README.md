@@ -8,8 +8,8 @@
 
 ## Building
 ```
-git clone https://github.com/ForestJ316/FlashlightDisablingManagement
-cd FlashlightDisablingManagement
+git clone https://github.com/ForestJ316/FlashlightDisablingManager
+cd FlashlightDisablingManager
 git submodule init
 git submodule update
 
