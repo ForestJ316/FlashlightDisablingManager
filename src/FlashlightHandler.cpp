@@ -17,8 +17,8 @@ int FlashlightHandler::GetRandomInt(int a_min, int a_max)
 void FlashlightHandler::InitFlickerList()
 {
 	auto& flickerList = FlickerList;
+	// Populate with some random cycles
 	// minRadius, maxRadius, minOn, maxOn, minOff, maxOff
-	// 1st Cycle
 	flickerList[1] = {
 		{ 1, { 0.6f, 0.75f, 0.1f, 0.2f, 0.1f, 0.2f } },
 		{ 2, { 0.6f, 0.7f, 0.07f, 0.12f, 0.07f, 0.12f } },
@@ -30,6 +30,19 @@ void FlashlightHandler::InitFlickerList()
 		{ 2, { 0.35f, 0.6f, 0.1f, 0.15f, 0.1f, 0.15f } },
 		{ 3, { 0.2f, 0.3f, 0.1f, 0.15f, 0.1f, 0.15f } }
 	};
+	flickerList[3] = {
+		{ 1, { 0.75f, 0.9f, 0.05f, 0.125f, 0.05f, 0.125f } },
+		{ 2, { 0.6f, 0.75f, 0.1f, 0.15f, 0.1f, 0.15f } },
+		{ 3, { 0.2f, 0.4f, 0.08f, 0.12f, 0.08f, 0.12f } },
+		{ 4, { 0.2f, 0.4f, 0.1f, 0.15f, 0.1f, 0.15f } }
+	};
+	flickerList[4] = {
+		{ 1, { 0.8f, 0.9f, 0.1f, 0.1f, 0.1f, 0.1f } },
+		{ 2, { 0.4f, 0.6f, 0.075f, 0.1f, 0.075f, 0.1f } },
+		{ 3, { 0.4f, 0.7f, 0.075f, 0.1f, 0.075f, 0.1f } },
+		{ 4, { 0.2f, 0.4f, 0.1f, 0.1f, 0.1f, 0.1f } },
+		{ 5, { 0.15f, 0.35f, 0.075f, 0.125f, 0.075f, 0.125f } }
+	};
 }
 
 void FlashlightHandler::Initialize()
@@ -39,14 +52,15 @@ void FlashlightHandler::Initialize()
 	if (UI) {
 		UI->RegisterSink<RE::MenuOpenCloseEvent>(FlashlightHandler::GetSingleton());
 	}
+	// Hooked function into toggling the pipboy light with hotkey
+	_HandlePipboyLightHotkey = F4SE::GetTrampoline().write_call<5>(REL::ID(181358).address() + 0x14A, HandlePipboyLightHotkey);
 	// Play Pipboy Audio
 	_PlayPipboyAudio = F4SE::GetTrampoline().write_call<5>(REL::ID(520007).address() + 0x23, PlayPipboyAudio);
 	// Hook GenDynamic to get the TESObjectLIGH form
 	_GenerateLight = F4SE::GetTrampoline().write_call<5>(REL::ID(1304102).address() + 0x28C, GenerateLight);
 	// Hook Notify Light Event to stop regular functionality while flickering
 	_NotifyPipboyLightEvent = F4SE::GetTrampoline().write_call<5>(REL::ID(1304102).address() + 0x472, NotifyPipboyLightEvent);
-	// Hooked function into toggling the pipboy light with hotkey
-	_HandlePipboyLightHotkey = F4SE::GetTrampoline().write_call<5>(REL::ID(181358).address() + 0x14A, HandlePipboyLightHotkey);
+	
 	// Vfunc hook OnUpdate
 	_Update = REL::Relocation<uintptr_t>(RE::VTABLE::PlayerCharacter[0]).write_vfunc(0xCF, Update);
 
@@ -92,6 +106,10 @@ void FlashlightHandler::TurnOnFlashlight()
 				InitFlashlightFlicker("On");
 			}
 		}
+		// If it somehow got turned on just reset vars
+		else if (a_player->IsPipboyLightOn()) {
+			ResetVars(true);
+		}
 	}	
 }
 
@@ -125,7 +143,7 @@ void FlashlightHandler::HandlePipboyLightHotkey(RE::TaskQueueInterface* a1)
 			if (RE::PlayerCharacter::GetSingleton()->IsPipboyLightOn()) {
 				QueuedTogglePipboyLight(a1);
 			}
-			InitFlashlightFlicker("Hotkey");
+			FlashlightHandler::GetSingleton()->InitFlashlightFlicker("Hotkey");
 		}
 		else if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount == 0) {
 			QueuedTogglePipboyLight(a1);
@@ -163,15 +181,18 @@ void FlashlightHandler::PlayPipboyAudio(const char* a1)
 	}
 }
 
+// This function doesn't execute if the IsPipboyLightOn() is false
+// WARNING: Possible bug with default radius getting overwritten somewhere with a lower one (race condition? flashlight object change?)
 RE::BSLight* FlashlightHandler::GenerateLight(RE::TESObjectLIGH* a1, __int64 a2, RE::NiNode* a3, bool a4, bool a5, bool a6, RE::BSLight** a7, float a8, bool a9)
-{
-	auto flashlightHandler = FlashlightHandler::GetSingleton();
-	// Store the default radius
-	if (flashlightHandler->iDefaultRadius == 0) {
-		flashlightHandler->iDefaultRadius = a1->data.radius;
-	}
-	// If flashlight turning on then change radius appropriately
-	if (!RE::PlayerCharacter::GetSingleton()->IsPipboyLightOn()) {
+{	
+	// Only when flickering
+	if (sFlickerType != "") {
+		auto flashlightHandler = FlashlightHandler::GetSingleton();
+		// Store the default radius
+		if (flashlightHandler->iDefaultRadius == 0) {
+			flashlightHandler->iDefaultRadius = a1->data.radius;
+			flashlightHandler->FlashlightLight = a1;
+		}
 		auto currentCycle = flashlightHandler->Flicker.begin();
 		// If flashlight currently flickering then change radius appropriately
 		if (currentCycle != flashlightHandler->Flicker.end()) {
@@ -260,12 +281,15 @@ void FlashlightHandler::Update(RE::PlayerCharacter* a_player, float a_delta)
 	}
 }
 
-void FlashlightHandler::ResetVars(bool a_loadGame)
+void FlashlightHandler::ResetVars(bool a_fullDefault)
 {
-	if (a_loadGame) {
+	if (a_fullDefault) {
 		auto flashlightHandler = FlashlightHandler::GetSingleton();
 		flashlightHandler->bWasFlashlightOn = false;
-		flashlightHandler->iDefaultRadius = 0;
+		if (flashlightHandler->iDefaultRadius > 0 && flashlightHandler->FlashlightLight != nullptr) {
+			flashlightHandler->FlashlightLight->data.radius = flashlightHandler->iDefaultRadius;
+			flashlightHandler->iDefaultRadius = 0;
+		}
 	}
 	sFlickerType = "";
 	fTimer = 0.f;

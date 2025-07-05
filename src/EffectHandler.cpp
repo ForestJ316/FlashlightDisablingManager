@@ -7,6 +7,7 @@ void EffectHandler::Initialize()
 
 	_OnEffectStart = REL::Relocation<uintptr_t>(RE::VTABLE::ScriptEffect[0]).write_vfunc(0x16, OnEffectStart); // Start
 	_OnEffectFinish = REL::Relocation<uintptr_t>(RE::VTABLE::ScriptEffect[0]).write_vfunc(0x17, OnEffectFinish); // Finish
+	_OnEffectFinishLoadGame = REL::Relocation<uintptr_t>(RE::VTABLE::ScriptEffect[0]).write_vfunc(0xD, OnEffectFinishLoadGame); // Finish Load Game
 
 	auto dataHandler = RE::TESDataHandler::GetSingleton();
 	if (dataHandler) {
@@ -59,6 +60,26 @@ void EffectHandler::OnEffectFinish(RE::ActiveEffect* a_effect)
 					EffectHandler::GetSingleton()->sActionToDoAfterMenu = "On";
 				}
 			}	
+		}
+	}
+}
+
+void EffectHandler::OnEffectFinishLoadGame(RE::ActiveEffect* a_effect)
+{
+	_OnEffectFinishLoadGame(a_effect);
+
+	// If loaded game and effect is active, OnEffectStart won't fire, so have to check in here
+	if (a_effect->effect->effectSetting == FlashlightEffectID && a_effect->target->GetTargetStatsObject() == RE::PlayerCharacter::GetSingleton()
+		&& a_effect->conditionStatus.any(RE::ActiveEffect::ConditionStatus::kTrue)) {
+		// Increment a counter instead of storing the unique ID
+		EffectHandler::GetSingleton()->iActiveFlashlightEffectCount += 1;
+		// Turn on/off only after Fader Menu
+		const auto UI = RE::UI::GetSingleton();
+		if (!UI->GetMenuOpen("LoadingMenu"sv) || !UI->GetMenuOpen("FaderMenu"sv)) {
+			FlashlightHandler::GetSingleton()->TurnOffFlashlight();
+		}
+		else {
+			EffectHandler::GetSingleton()->sActionToDoAfterMenu = "Off";
 		}
 	}
 }

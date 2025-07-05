@@ -19,6 +19,9 @@ private:
 	static void OnEffectFinish(RE::ActiveEffect* a_effect);
 	static inline REL::Relocation<decltype(OnEffectFinish)> _OnEffectFinish;
 
+	static void OnEffectFinishLoadGame(RE::ActiveEffect* a_effect);
+	static inline REL::Relocation<decltype(OnEffectFinishLoadGame)> _OnEffectFinishLoadGame;
+
 	static inline RE::EffectSetting* FlashlightEffectID;
 
 	std::string sActionToDoAfterMenu = "";
