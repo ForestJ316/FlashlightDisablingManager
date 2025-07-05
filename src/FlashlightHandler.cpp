@@ -20,28 +20,28 @@ void FlashlightHandler::InitFlickerList()
 	// Populate with some random cycles
 	// minRadius, maxRadius, minOn, maxOn, minOff, maxOff
 	flickerList[1] = {
-		{ 1, { 0.6f, 0.75f, 0.1f, 0.2f, 0.1f, 0.2f } },
-		{ 2, { 0.6f, 0.7f, 0.07f, 0.12f, 0.07f, 0.12f } },
-		{ 3, { 0.3f, 0.5f, 0.07f, 0.12f, 0.07f, 0.12f } },
-		{ 4, { 0.3f, 0.4f, 0.05f, 0.1f, 0.05f, 0.1f } }
+		{ 1, { 0.1f, 0.2f, 0.1f, 0.2f } },
+		{ 2, { 0.07f, 0.12f, 0.07f, 0.12f } },
+		{ 3, { 0.07f, 0.12f, 0.07f, 0.12f } },
+		{ 4, { 0.05f, 0.1f, 0.05f, 0.1f } }
 	};
 	flickerList[2] = {
-		{ 1, { 0.9f, 1.0f, 0.15f, 0.2f, 0.15f, 0.2f } },
-		{ 2, { 0.35f, 0.6f, 0.1f, 0.15f, 0.1f, 0.15f } },
-		{ 3, { 0.2f, 0.3f, 0.1f, 0.15f, 0.1f, 0.15f } }
+		{ 1, { 0.15f, 0.2f, 0.15f, 0.2f } },
+		{ 2, { 0.1f, 0.15f, 0.1f, 0.15f } },
+		{ 3, { 0.1f, 0.15f, 0.1f, 0.15f } }
 	};
 	flickerList[3] = {
-		{ 1, { 0.75f, 0.9f, 0.05f, 0.125f, 0.05f, 0.125f } },
-		{ 2, { 0.6f, 0.75f, 0.1f, 0.15f, 0.1f, 0.15f } },
-		{ 3, { 0.2f, 0.4f, 0.08f, 0.12f, 0.08f, 0.12f } },
-		{ 4, { 0.2f, 0.4f, 0.1f, 0.15f, 0.1f, 0.15f } }
+		{ 1, { 0.05f, 0.125f, 0.05f, 0.125f } },
+		{ 2, { 0.1f, 0.15f, 0.1f, 0.15f } },
+		{ 3, { 0.08f, 0.12f, 0.08f, 0.12f } },
+		{ 4, { 0.1f, 0.15f, 0.1f, 0.15f } }
 	};
 	flickerList[4] = {
-		{ 1, { 0.8f, 0.9f, 0.1f, 0.1f, 0.1f, 0.1f } },
-		{ 2, { 0.4f, 0.6f, 0.075f, 0.1f, 0.075f, 0.1f } },
-		{ 3, { 0.4f, 0.7f, 0.075f, 0.1f, 0.075f, 0.1f } },
-		{ 4, { 0.2f, 0.4f, 0.1f, 0.1f, 0.1f, 0.1f } },
-		{ 5, { 0.15f, 0.35f, 0.075f, 0.125f, 0.075f, 0.125f } }
+		{ 1, { 0.1f, 0.1f, 0.1f, 0.1f } },
+		{ 2, { 0.075f, 0.1f, 0.075f, 0.1f } },
+		{ 3, { 0.075f, 0.1f, 0.075f, 0.1f } },
+		{ 4, { 0.1f, 0.1f, 0.1f, 0.1f } },
+		{ 5, { 0.075f, 0.125f, 0.075f, 0.125f } }
 	};
 }
 
@@ -52,14 +52,14 @@ void FlashlightHandler::Initialize()
 	if (UI) {
 		UI->RegisterSink<RE::MenuOpenCloseEvent>(FlashlightHandler::GetSingleton());
 	}
-	// Hooked function into toggling the pipboy light with hotkey
-	_HandlePipboyLightHotkey = F4SE::GetTrampoline().write_call<5>(REL::ID(181358).address() + 0x14A, HandlePipboyLightHotkey);
+	// Hooked TogglePipboyLight() function in task unpack
+	_PipboyLightTaskUnpack = F4SE::GetTrampoline().write_call<5>(REL::ID(1546751).address() + 0x2717, PipboyLightTaskUnpack);
 	// Play Pipboy Audio
 	_PlayPipboyAudio = F4SE::GetTrampoline().write_call<5>(REL::ID(520007).address() + 0x23, PlayPipboyAudio);
-	// Hook GenDynamic to get the TESObjectLIGH form
-	_GenerateLight = F4SE::GetTrampoline().write_call<5>(REL::ID(1304102).address() + 0x28C, GenerateLight);
 	// Hook Notify Light Event to stop regular functionality while flickering
 	_NotifyPipboyLightEvent = F4SE::GetTrampoline().write_call<5>(REL::ID(1304102).address() + 0x472, NotifyPipboyLightEvent);
+	// Hook GenDynamic to get the TESObjectLIGH form
+	//_GenerateLight = F4SE::GetTrampoline().write_call<5>(REL::ID(1304102).address() + 0x28C, GenerateLight);
 	
 	// Vfunc hook OnUpdate
 	_Update = REL::Relocation<uintptr_t>(RE::VTABLE::PlayerCharacter[0]).write_vfunc(0xCF, Update);
@@ -92,7 +92,7 @@ void FlashlightHandler::TurnOnFlashlight()
 	// Turn on only if it was on before
 	if (FlashlightHandler::GetSingleton()->bWasFlashlightOn) {
 		// If it's currently flickering then turn the flashlight on after the flicker
-		if (sFlickerType == "Off" || sFlickerType == "Hotkey") {
+		if (sFlickerType != "") {
 			if (sFlickerType == "Hotkey") {
 				sFlickerType = "Off";
 			}
@@ -120,7 +120,7 @@ void FlashlightHandler::TurnOffFlashlight()
 	// The flag will also serve as a check whether the flashlight was on before
 	if (!FlashlightHandler::GetSingleton()->bWasFlashlightOn) {
 		// If it's currently flickering then turn the flashlight off after the flicker
-		if (sFlickerType == "On") {
+		if (sFlickerType != "") {
 			sForceOnOff = "ForceOff";
 			FlashlightHandler::GetSingleton()->bWasFlashlightOn = true;
 		}
@@ -134,19 +134,25 @@ void FlashlightHandler::TurnOffFlashlight()
 	}
 }
 
-void FlashlightHandler::HandlePipboyLightHotkey(RE::TaskQueueInterface* a1)
+void FlashlightHandler::PipboyLightTaskUnpack(RE::PlayerCharacter* a_player, bool a_unk)
 {
+	// If a toggle got queued during flickering, only execute the queued toggles (in case of racing with other functions or plugins)
+	if (!bQueuedToggle.empty()) {
+		bQueuedToggle.pop();
+		_PipboyLightTaskUnpack(a_player, a_unk);
+	}
 	// Don't mess with the flashlight during flickering
-	if (sFlickerType == "") {
+	else if (sFlickerType == "") {
+		// Assume hotkey got pressed
 		if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount > 0) {
 			// If flashlight somehow got turned on
 			if (RE::PlayerCharacter::GetSingleton()->IsPipboyLightOn()) {
-				QueuedTogglePipboyLight(a1);
+				_PipboyLightTaskUnpack(a_player, a_unk);
 			}
 			FlashlightHandler::GetSingleton()->InitFlashlightFlicker("Hotkey");
 		}
 		else if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount == 0) {
-			QueuedTogglePipboyLight(a1);
+			_PipboyLightTaskUnpack(a_player, a_unk);
 		}
 	}
 }
@@ -162,6 +168,7 @@ void FlashlightHandler::InitFlashlightFlicker(std::string a_flickerType)
 			flashlightHandler->Flicker.insert({ cycleData.first, cycleData.second });
 		}
 		sFlickerType = a_flickerType;
+		bQueuedToggle.push(true);
 		QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
 	}
 }
@@ -181,16 +188,21 @@ void FlashlightHandler::PlayPipboyAudio(const char* a1)
 	}
 }
 
+/*
 // This function doesn't execute if the IsPipboyLightOn() is false
 // WARNING: Possible bug with default radius getting overwritten somewhere with a lower one (race condition? flashlight object change?)
 RE::BSLight* FlashlightHandler::GenerateLight(RE::TESObjectLIGH* a1, __int64 a2, RE::NiNode* a3, bool a4, bool a5, bool a6, RE::BSLight** a7, float a8, bool a9)
-{	
+{
+	auto flashlightHandler = FlashlightHandler::GetSingleton();
+	logger::info("same flashlight object: {}", flashlightHandler->FlashlightLight == a1);
 	// Only when flickering
 	if (sFlickerType != "") {
-		auto flashlightHandler = FlashlightHandler::GetSingleton();
 		// Store the default radius
 		if (flashlightHandler->iDefaultRadius == 0) {
 			flashlightHandler->iDefaultRadius = a1->data.radius;
+			logger::info("new default radius is: {}", flashlightHandler->iDefaultRadius);
+		}
+		if (flashlightHandler->FlashlightLight != a1) {
 			flashlightHandler->FlashlightLight = a1;
 		}
 		auto currentCycle = flashlightHandler->Flicker.begin();
@@ -210,9 +222,15 @@ RE::BSLight* FlashlightHandler::GenerateLight(RE::TESObjectLIGH* a1, __int64 a2,
 			flashlightHandler->iDefaultRadius = 0;
 		}
 	}
+	// Or if it was a force on
+	// Even if TESObjectLIGH changes, the radius stays from the old one
+	else if (flashlightHandler->iDefaultRadius > 0 && flashlightHandler->Flicker.empty() && flashlightHandler->FlashlightLight == a1) {
+		a1->data.radius = flashlightHandler->iDefaultRadius;
+		flashlightHandler->iDefaultRadius = 0;
+	}
 	return _GenerateLight(a1, a2, a3, a4, a5, a6, a7, a8, a9);
 }
-
+*/
 
 RE::BSTEventSource<RE::PipboyLightEvent>* FlashlightHandler::NotifyPipboyLightEvent(RE::BSTEventSource<RE::PipboyLightEvent>* a1, const RE::PipboyLightEvent& a2)
 {
@@ -233,6 +251,7 @@ RE::BSTEventSource<RE::PipboyLightEvent>* FlashlightHandler::NotifyPipboyLightEv
 					// If got turned off while flickering to on, do another regular toggle
 					// (can be double audio with last On call, but it's rare enough case and compromise for potential racing)
 					if (wasForceType == "ForceOff") {
+						bQueuedToggle.push(true);
 						QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
 						return nullptr;
 					}
@@ -251,6 +270,7 @@ RE::BSTEventSource<RE::PipboyLightEvent>* FlashlightHandler::NotifyPipboyLightEv
 					// If got turned on while flickering to off, do another regular toggle
 					// (can be double audio on last Off call, but it's rare enough case and compromise for potential racing)
 					if (wasForceType == "ForceOn") {
+						bQueuedToggle.push(true);
 						QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
 						return nullptr;
 					}
@@ -276,6 +296,7 @@ void FlashlightHandler::Update(RE::PlayerCharacter* a_player, float a_delta)
 		if (fTimer >= fNextFlicker) {
 			fNextFlicker = 0.f;
 			fTimer = 0.f;
+			bQueuedToggle.push(true);
 			QueuedTogglePipboyLight(RE::TaskQueueInterface::GetSingleton());
 		}
 	}
@@ -286,11 +307,12 @@ void FlashlightHandler::ResetVars(bool a_fullDefault)
 	if (a_fullDefault) {
 		auto flashlightHandler = FlashlightHandler::GetSingleton();
 		flashlightHandler->bWasFlashlightOn = false;
-		if (flashlightHandler->iDefaultRadius > 0 && flashlightHandler->FlashlightLight != nullptr) {
+		/*if (flashlightHandler->iDefaultRadius > 0 && flashlightHandler->FlashlightLight != nullptr) {
 			flashlightHandler->FlashlightLight->data.radius = flashlightHandler->iDefaultRadius;
 			flashlightHandler->iDefaultRadius = 0;
-		}
+		}*/
 	}
+	bQueuedToggle = std::queue<bool>();
 	sFlickerType = "";
 	fTimer = 0.f;
 	fNextFlicker = 0.f;
