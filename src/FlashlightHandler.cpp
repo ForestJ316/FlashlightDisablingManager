@@ -1,16 +1,13 @@
 #include "FlashlightHandler.h"
-#include "EffectHandler.h"
+#include "DisableEffectHandler.h"
+#include "Utils.h"
+#include "Offsets.h"
 
-float FlashlightHandler::GetRandomFloat(float a_min, float a_max)
+FlashlightHandler::FlickerData::FlickerData(const FlickerDataDefaults& cycleDefaults)
 {
-	float uni_dist = rng.uniform(a_min, a_max);
-	return uni_dist;
-}
-
-int FlashlightHandler::GetRandomInt(int a_min, int a_max)
-{
-	int uni_dist = rng.uniform(a_min, a_max);
-	return uni_dist;
+	//newRadius =  Utils::GetRandomFloat(cycleDefaults.minRadius, cycleDefaults.maxRadius);
+	timeOn = Utils::GetRandomFloat(cycleDefaults.minOn, cycleDefaults.maxOn);
+	timeOff = Utils::GetRandomFloat(cycleDefaults.minOff, cycleDefaults.maxOff);
 }
 
 // Initialize flicker list hardcoded values
@@ -60,7 +57,7 @@ void FlashlightHandler::Initialize()
 	_NotifyPipboyLightEvent = F4SE::GetTrampoline().write_call<5>(REL::ID(1304102).address() + 0x472, NotifyPipboyLightEvent);
 	// Hook GenDynamic to get the TESObjectLIGH form
 	//_GenerateLight = F4SE::GetTrampoline().write_call<5>(REL::ID(1304102).address() + 0x28C, GenerateLight);
-	
+
 	// Vfunc hook OnUpdate
 	_Update = REL::Relocation<uintptr_t>(RE::VTABLE::PlayerCharacter[0]).write_vfunc(0xCF, Update);
 
@@ -78,7 +75,7 @@ FlashlightHandler::EventResult FlashlightHandler::ProcessEvent(const RE::MenuOpe
 			InitFlashlightFlicker("Off");
 		}
 		// Flashlight turned on while in Pipboy Menu
-		else if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount == 0) {
+		else if (DisableEffectHandler::GetSingleton()->iActiveFlashlightEffectCount == 0) {
 			FlashlightHandler::GetSingleton()->bWasFlashlightOn = false;
 			InitFlashlightFlicker("On");
 		}
@@ -144,14 +141,14 @@ void FlashlightHandler::PipboyLightTaskUnpack(RE::PlayerCharacter* a_player, boo
 	// Don't mess with the flashlight during flickering
 	else if (sFlickerType == "") {
 		// Assume hotkey got pressed
-		if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount > 0) {
+		if (DisableEffectHandler::GetSingleton()->iActiveFlashlightEffectCount > 0) {
 			// If flashlight somehow got turned on
 			if (RE::PlayerCharacter::GetSingleton()->IsPipboyLightOn()) {
 				_PipboyLightTaskUnpack(a_player, a_unk);
 			}
 			FlashlightHandler::GetSingleton()->InitFlashlightFlicker("Hotkey");
 		}
-		else if (EffectHandler::GetSingleton()->iActiveFlashlightEffectCount == 0) {
+		else if (DisableEffectHandler::GetSingleton()->iActiveFlashlightEffectCount == 0) {
 			_PipboyLightTaskUnpack(a_player, a_unk);
 		}
 	}
@@ -161,7 +158,7 @@ void FlashlightHandler::InitFlashlightFlicker(std::string a_flickerType)
 {
 	auto flashlightHandler = FlashlightHandler::GetSingleton();
 	auto& flickerList = flashlightHandler->FlickerList;
-	auto iRandomFlicker = flashlightHandler->GetRandomInt(1, (int)flickerList.size());
+	auto iRandomFlicker = Utils::GetRandomInt(1, (int)flickerList.size());
 	if (flickerList.find(iRandomFlicker) != flickerList.end()) {
 		auto& chosenFlickerCycle = flickerList.find(iRandomFlicker)->second;
 		for (const auto& cycleData : chosenFlickerCycle) {

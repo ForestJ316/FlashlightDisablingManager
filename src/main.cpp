@@ -1,6 +1,7 @@
 #include "FlashlightHandler.h"
-#include "EffectHandler.h"
 #include "CellHandler.h"
+#include "DisableEffectHandler.h"
+#include "WeatherEffectHandler.h"
 
 namespace
 {
@@ -38,11 +39,14 @@ namespace
 		{
 			case F4SE::MessagingInterface::kGameDataReady:
 				FlashlightHandler::Initialize();
-				EffectHandler::Initialize();
 				CellHandler::Initialize();
+				DisableEffectHandler::Initialize();
+				WeatherEffectHandler::Initialize();
 				break;
 			case F4SE::MessagingInterface::kPreLoadGame:
 				FlashlightHandler::GetSingleton()->ResetVars(true);
+			case F4SE::MessagingInterface::kPostLoadGame:
+				WeatherEffectHandler::GetSingleton()->ApplyWeatherCheckToPlayer();
 			default:
 				break;
 		}

@@ -1,11 +1,11 @@
 #pragma once
 
-class EffectHandler
+class DisableEffectHandler
 {
 public:
-	static EffectHandler* GetSingleton()
+	static DisableEffectHandler* GetSingleton()
 	{
-		static EffectHandler singleton;
+		static DisableEffectHandler singleton;
 		return std::addressof(singleton);
 	}
 	static void Initialize();

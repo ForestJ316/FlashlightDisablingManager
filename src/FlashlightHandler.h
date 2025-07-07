@@ -1,13 +1,5 @@
 #pragma once
-// https://www.pcg-random.org/posts/ease-of-use-without-loss-of-power.html
-#include "randutils.hpp"
 #include <unordered_map>
-
-// Offsets
-static float* f_SecondsSinceLastFrame_RealTime = (float*)REL::ID(1013228).address();
-// Queue Toggle Pipboy Light
-typedef void(_fastcall* tQueuedTogglePipboyLight)(RE::TaskQueueInterface*);
-static REL::Relocation<tQueuedTogglePipboyLight> QueuedTogglePipboyLight{ REL::ID(588241) };
 
 class FlashlightHandler : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
 {
@@ -48,10 +40,6 @@ private:
 	static void Update(RE::PlayerCharacter* a_player, float a_delta);
 	static inline REL::Relocation<decltype(Update)> _Update;
 
-	randutils::default_rng rng;
-	float GetRandomFloat(float a_min, float a_max);
-	int GetRandomInt(int a_min, int a_max);
-
 	struct FlickerDataDefaults
 	{
 		// Light radius min/max percentage of default radius (for random)
@@ -66,11 +54,7 @@ private:
 	};
 	struct FlickerData
 	{
-		FlickerData(const FlickerDataDefaults& cycleDefaults) {
-			//newRadius = FlashlightHandler::GetSingleton()->GetRandomFloat(cycleDefaults.minRadius, cycleDefaults.maxRadius);
-			timeOn = FlashlightHandler::GetSingleton()->GetRandomFloat(cycleDefaults.minOn, cycleDefaults.maxOn);
-			timeOff = FlashlightHandler::GetSingleton()->GetRandomFloat(cycleDefaults.minOff, cycleDefaults.maxOff);
-		}
+		FlickerData(const FlickerDataDefaults& cycleDefaults);
 		// Randomized values
 		//float newRadius;
 		float timeOn;
