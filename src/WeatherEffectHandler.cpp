@@ -1,6 +1,5 @@
 #include "WeatherEffectHandler.h"
 #include "DisableEffectHandler.h"
-#include "Utils.h"
 #include "Offsets.h"
 
 void WeatherEffectHandler::Initialize()
@@ -18,9 +17,15 @@ void WeatherEffectHandler::Initialize()
 		CSimpleIniA::TNamesDepend keys;
 		auto weatherSection = ini.GetSection("Weather List");
 		for (auto it = weatherSection->begin(); it != weatherSection->end(); ++it) {
-			std::uint32_t intKey = std::stoi(it->first.pItem, 0, 16); // Convert hex form to int decimal value
-			float floatValue = std::stof(it->second);
-			WeatherList.insert({ intKey, floatValue });
+			// Check if the key is in the correct format
+			// Format is "hex|plugin"
+			std::string strValue = it->first.pItem;
+			if (strValue.find("|") != std::string::npos) {
+				// Convert the hex to decimal instead
+				std::string decimalKey = Utils::ConvertIniEntryToDecimal(strValue);
+				float floatValue = std::stof(it->second);
+				WeatherList.insert({ decimalKey, floatValue });
+			}
 		}
 		ini.Reset(); // Deallocate memory
 	};
@@ -61,20 +66,6 @@ void WeatherEffectHandler::ApplyWeatherCheckToPlayer()
 	}
 }
 
-std::uint32_t WeatherEffectHandler::GetWeatherFormID(RE::TESWeather* a_weather)
-{
-	auto weatherFormID = a_weather->formID;
-	// Convert to hex
-	std::stringstream hexForm;
-	hexForm << std::hex << weatherFormID;
-	auto hexStr = hexForm.str();
-	hexForm.str(std::string()); // Clear stringstream for next iteration
-	// Keep last 6 digits
-	hexStr = hexStr.substr(hexStr.length() - 6, hexStr.length());
-	// Convert back to decimal
-	return std::stoi(hexStr, 0, 16);
-}
-
 WeatherEffectHandler::EventResult WeatherEffectHandler::ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*)
 {
 	if (!a_event.opening && a_event.menuName == "LoadingMenu"sv && sActionToDoAfterMenu != "") {
@@ -98,10 +89,12 @@ void WeatherEffectHandler::OnEffectStart(RE::ActiveEffect* a_effect)
 	if (a_effect->effect->effectSetting == WeatherCheckEffectID) {
 		// Do an extra player check in case
 		if (auto a_player = RE::PlayerCharacter::GetSingleton(); a_effect->target->GetTargetStatsObject() == a_player) {
-			auto currentWeatherID = WeatherEffectHandler::GetSingleton()->GetWeatherFormID(RE::Sky::GetSingleton()->currentWeather);
-			if (WeatherList.find(currentWeatherID) != WeatherList.end()) {
+			auto weatherForm = RE::Sky::GetSingleton()->currentWeather;
+			auto disabledEntry = Utils::GetDisabledIniEntryFromForm(WeatherList, weatherForm);
+			logger::info("weather form id: {}, disabled entry: {}", weatherForm->formID, disabledEntry.c_str());
+			if (disabledEntry != "") {
 				// If weather is in the listed disable weathers then roll the chance to disable flashlight
-				auto disableChance = WeatherList.find(currentWeatherID)->second;
+				auto disableChance = WeatherList.find(disabledEntry)->second;
 				auto randomChance = Utils::GetRandomFloat(0.0, 1.0);
 				if (randomChance <= disableChance) {
 					// Don't add in Loading Menu
@@ -144,10 +137,11 @@ void WeatherEffectHandler::OnEffectFinishLoadGame(RE::ActiveEffect* a_effect)
 	if (a_effect->effect->effectSetting == WeatherCheckEffectID && a_effect->conditionStatus.any(RE::ActiveEffect::ConditionStatus::kTrue)) {
 		// Do an extra player check in case
 		if (auto a_player = RE::PlayerCharacter::GetSingleton(); a_effect->target->GetTargetStatsObject() == a_player) {
-			auto currentWeatherID = WeatherEffectHandler::GetSingleton()->GetWeatherFormID(RE::Sky::GetSingleton()->currentWeather);
-			if (WeatherList.find(currentWeatherID) != WeatherList.end()) {
+			auto weatherForm = RE::Sky::GetSingleton()->currentWeather;
+			auto disabledEntry = Utils::GetDisabledIniEntryFromForm(WeatherList, weatherForm);
+			if (disabledEntry != "") {
 				// If weather is in the listed disable weathers then roll the chance to disable flashlight
-				auto disableChance = WeatherList.find(currentWeatherID)->second;
+				auto disableChance = WeatherList.find(disabledEntry)->second;
 				auto randomChance = Utils::GetRandomFloat(0.0, 1.0);
 				if (randomChance <= disableChance) {
 					// Don't add in Loading Menu

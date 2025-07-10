@@ -16,8 +16,14 @@ void CellHandler::Initialize()
 		CSimpleIniA::TNamesDepend keys;
 		ini.GetAllKeys("Cell List", keys);
 		for (CSimpleIniA::TNamesDepend::const_iterator it = keys.begin(); it != keys.end(); ++it) {
-			std::uint32_t intValue = std::stoi(it->pItem, 0, 16); // Convert hex form to int decimal value
-			CellList.insert(intValue);
+			// Check if the key is in the correct format
+			// Format is "hex|plugin"
+			std::string strValue = it->pItem;
+			if (strValue.find("|") != std::string::npos) {
+				// Convert the hex to decimal instead
+				std::string decimalKey = Utils::ConvertIniEntryToDecimal(strValue);
+				CellList.insert(decimalKey);
+			}
 		}
 		ini.Reset(); // Deallocate memory
 	};
@@ -42,17 +48,14 @@ void CellHandler::Initialize()
 CellHandler::EventResult CellHandler::ProcessEvent(const RE::BGSActorCellEvent& a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*)
 {
 	if (a_event.flags.get() == RE::BGSActorCellEvent::CellFlag::kEnter) {
-		auto cellHandler = CellHandler::GetSingleton();
 		auto a_player = RE::PlayerCharacter::GetSingleton();
 		const auto UI = RE::UI::GetSingleton();
-		if (CellList.find(a_event.cellID) != CellList.end()) {
-			// DEBUG
-			std::stringstream ss;
-			ss << std::hex << a_event.cellID;
-			logger::info("Entered disable cell with formid: {}", ss.str());
-			ss.str(std::string()); // Clear it
 
-			cellHandler->bEnteredDisabledCell = true;
+		auto cellForm = RE::TESForm::GetFormByID<RE::TESObjectCELL>(a_event.cellID);
+		auto disabledEntry = Utils::GetDisabledIniEntryFromForm(CellList, cellForm);
+		logger::info("entered cell: {}, is disabled entry: {}", cellForm->formID, disabledEntry.c_str());
+		if (disabledEntry != "") {
+			bEnteredDisabledCell = true;
 			// Catch-all if cell changed without a Loading Menu
 			if (!UI->GetMenuOpen("LoadingMenu"sv) && !UI->GetMenuOpen("FaderMenu"sv) && !ActorHasSpell(a_player, CellDisableLightSpell)) {
 				ActorAddSpell(a_player, CellDisableLightSpell);
@@ -60,8 +63,8 @@ CellHandler::EventResult CellHandler::ProcessEvent(const RE::BGSActorCellEvent& 
 		}
 		else {
 			// If entered a non-disable cell and previous cell was a disable cell
-			if (cellHandler->bEnteredDisabledCell) {
-				cellHandler->bEnteredDisabledCell = false;
+			if (bEnteredDisabledCell) {
+				bEnteredDisabledCell = false;
 				// Remove spell if no Loading Menu open, otherwise it will be removed after Fader Menu closes
 				if (!UI->GetMenuOpen("LoadingMenu"sv) && !UI->GetMenuOpen("FaderMenu"sv) && ActorHasSpell(a_player, CellDisableLightSpell)) {
 					ActorRemoveSpell(RE::PlayerCharacter::GetSingleton(), CellDisableLightSpell);

@@ -1,4 +1,5 @@
 #pragma once
+#include "Utils.h"
 #include <unordered_map>
 
 class WeatherEffectHandler : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
@@ -22,11 +23,10 @@ private:
 	static inline RE::SpellItem* WeatherCheckSpell;
 	static inline RE::EffectSetting* WeatherCheckEffectID;
 	static inline RE::SpellItem* WeatherDisableLightSpell;
-	static inline std::unordered_map<std::uint32_t, float> WeatherList;
+	
+	static inline std::unordered_map<std::string, float> WeatherList;
 
 	std::string sActionToDoAfterMenu = "";
-
-	std::uint32_t GetWeatherFormID(RE::TESWeather* a_weather);
 
 	static void OnEffectStart(RE::ActiveEffect* a_effect);
 	static inline REL::Relocation<decltype(OnEffectStart)> _OnEffectStart;

@@ -22,8 +22,8 @@ public:
 	void ResetVars(bool a_fullDefault);
 
 private:
-	// Order of funcs on pipboy light: PipboyLightTaskUnpack -> PlayPipboyAudio -> GenerateLight -> NotifyPipboyLightEvent
 	// Hooked funcs
+	// Order of funcs on pipboy light: PipboyLightTaskUnpack -> PlayPipboyAudio -> NotifyPipboyLightEvent
 	static void PipboyLightTaskUnpack(RE::PlayerCharacter* a_player, bool a_unk);
 	static inline REL::Relocation<decltype(PipboyLightTaskUnpack)> _PipboyLightTaskUnpack;
 
@@ -32,19 +32,13 @@ private:
 
 	static RE::BSTEventSource<RE::PipboyLightEvent>* NotifyPipboyLightEvent(RE::BSTEventSource<RE::PipboyLightEvent>* a1, const RE::PipboyLightEvent& a2);
 	static inline REL::Relocation<decltype(NotifyPipboyLightEvent)> _NotifyPipboyLightEvent;
-	/*
-	static RE::BSLight* GenerateLight(RE::TESObjectLIGH* a1, __int64 a2, RE::NiNode* a3, bool a4, bool a5, bool a6, RE::BSLight** a7, float a8, bool a9);
-	static inline REL::Relocation<decltype(GenerateLight)> _GenerateLight;
-	*/
+
 	// Vfunc
 	static void Update(RE::PlayerCharacter* a_player, float a_delta);
 	static inline REL::Relocation<decltype(Update)> _Update;
 
 	struct FlickerDataDefaults
 	{
-		// Light radius min/max percentage of default radius (for random)
-		//float minRadius;
-		//float maxRadius;
 		// On time min/max (for random)
 		float minOn;
 		float maxOn;
@@ -56,7 +50,6 @@ private:
 	{
 		FlickerData(const FlickerDataDefaults& cycleDefaults);
 		// Randomized values
-		//float newRadius;
 		float timeOn;
 		float timeOff;
 	};
@@ -68,9 +61,6 @@ private:
 	void InitFlashlightFlicker(std::string a_flickerType);
 	
 	bool bWasFlashlightOn = false;
-
-	//RE::TESObjectLIGH* FlashlightLight;
-	//std::uint32_t iDefaultRadius = 0;
 
 	static inline std::string sFlickerType = "";
 	static inline float fTimer = 0.f;

@@ -44,8 +44,14 @@ namespace
 				WeatherEffectHandler::Initialize();
 				break;
 			case F4SE::MessagingInterface::kPreLoadGame:
+				logger::info("In PreLoadGame");
 				FlashlightHandler::GetSingleton()->ResetVars(true);
+				DisableEffectHandler::GetSingleton()->ResetVars();
+				if (RE::PlayerCharacter::GetSingleton()->parentCell) {
+					logger::info("parent cell exists in preload game, with formid: {}", RE::PlayerCharacter::GetSingleton()->parentCell->formID);
+				}
 			case F4SE::MessagingInterface::kPostLoadGame:
+				logger::info("In PostLoadGame");
 				WeatherEffectHandler::GetSingleton()->ApplyWeatherCheckToPlayer();
 			default:
 				break;

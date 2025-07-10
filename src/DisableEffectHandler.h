@@ -11,6 +11,7 @@ public:
 	static void Initialize();
 
 	int iActiveFlashlightEffectCount = 0;
+	void ResetVars();
 
 private:
 	static void OnEffectStart(RE::ActiveEffect* a_effect);

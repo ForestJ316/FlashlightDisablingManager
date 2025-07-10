@@ -1,5 +1,6 @@
 #pragma once
-#include <unordered_set>
+#include "Utils.h"
+#include <unordered_map>
 
 class CellHandler : public RE::BSTEventSink<RE::BGSActorCellEvent>
 {
@@ -18,7 +19,7 @@ public:
 
 private:
 	static inline RE::SpellItem* CellDisableLightSpell;
-	static inline std::unordered_set<std::uint32_t> CellList;
+	static inline std::unordered_set<std::string> CellList;
 
 	bool bEnteredDisabledCell = false;
 
