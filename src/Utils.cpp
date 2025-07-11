@@ -35,45 +35,35 @@ std::uint32_t Utils::GetEditedFormID(std::uint32_t a_formID)
 	return std::stoi(hexStr, 0, 16);
 }
 
-std::string Utils::GetDisabledIniEntryFromForm(std::unordered_map<std::string, float> a_umap, RE::TESForm* a_form)
+std::pair<std::string, float> Utils::GetDisabledIniEntryFromForm(std::unordered_map<std::string, float> a_list, RE::TESForm* a_form)
 {
 	auto editedFormID = GetEditedFormID(a_form->formID);
 	std::string editedFormIDStr = std::to_string(editedFormID);
 	// Check if the Form ID is in the file
-	for (const auto& entry : a_umap) {
-		// If the list contains the form then check for file validity
-		if (entry.first.find(editedFormIDStr) != std::string::npos) {
-			auto iniPluginName = GetIniPluginName(entry.first);
-			auto sourceFiles = a_form->sourceFiles.array->data();
-			for (std::uint32_t i = 0; i < a_form->sourceFiles.array->size(); ++i)
-			{
-				// If the file is valid then it's the correct form
-				if (std::string(sourceFiles[i]->filename) == iniPluginName) {
-					return entry.first;
-				}
-			}
+	auto sourceFiles = a_form->sourceFiles.array->data();
+	for (std::uint32_t i = 0; i < a_form->sourceFiles.array->size(); ++i)
+	{
+		// Format the form + file in the ini format "formID|plugin"
+		std::string formattedForm = editedFormIDStr + "|" + std::string(sourceFiles[i]->filename);
+		if (auto disabledEntry = a_list.find(formattedForm); disabledEntry != a_list.end()) {
+			return *disabledEntry;
 		}
 	}
-	return "";
+	return std::make_pair("", -1.0f);
 }
 
-std::string Utils::GetDisabledIniEntryFromForm(std::unordered_set<std::string> a_uset, RE::TESForm* a_form)
+std::string Utils::GetDisabledIniEntryFromForm(std::unordered_set<std::string> a_list, RE::TESForm* a_form)
 {
 	auto editedFormID = GetEditedFormID(a_form->formID);
 	std::string editedFormIDStr = std::to_string(editedFormID);
 	// Check if the Form ID is in the file
-	for (const auto& entry : a_uset) {
-		// If the list contains the form then check for file validity
-		if (entry.find(editedFormIDStr) != std::string::npos) {
-			auto iniPluginName = GetIniPluginName(entry);
-			auto sourceFiles = a_form->sourceFiles.array->data();
-			for (std::uint32_t i = 0; i < a_form->sourceFiles.array->size(); ++i)
-			{
-				// If the file is valid then it's the correct form
-				if (std::string(sourceFiles[i]->filename) == iniPluginName) {
-					return entry;
-				}
-			}
+	auto sourceFiles = a_form->sourceFiles.array->data();
+	for (std::uint32_t i = 0; i < a_form->sourceFiles.array->size(); ++i)
+	{
+		// Format the form + file in the ini format "formID|plugin"
+		std::string formattedForm = editedFormIDStr + "|" + std::string(sourceFiles[i]->filename);
+		if (a_list.find(formattedForm) != a_list.end()) {
+			return formattedForm;
 		}
 	}
 	return "";

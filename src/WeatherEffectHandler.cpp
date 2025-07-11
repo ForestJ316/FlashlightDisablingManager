@@ -91,10 +91,9 @@ void WeatherEffectHandler::OnEffectStart(RE::ActiveEffect* a_effect)
 		if (auto a_player = RE::PlayerCharacter::GetSingleton(); a_effect->target->GetTargetStatsObject() == a_player) {
 			auto weatherForm = RE::Sky::GetSingleton()->currentWeather;
 			auto disabledEntry = Utils::GetDisabledIniEntryFromForm(WeatherList, weatherForm);
-			logger::info("weather form id: {}, disabled entry: {}", weatherForm->formID, disabledEntry.c_str());
-			if (disabledEntry != "") {
+			if (disabledEntry.first != "") {
 				// If weather is in the listed disable weathers then roll the chance to disable flashlight
-				auto disableChance = WeatherList.find(disabledEntry)->second;
+				auto disableChance = disabledEntry.second;
 				auto randomChance = Utils::GetRandomFloat(0.0, 1.0);
 				if (randomChance <= disableChance) {
 					// Don't add in Loading Menu
@@ -139,9 +138,9 @@ void WeatherEffectHandler::OnEffectFinishLoadGame(RE::ActiveEffect* a_effect)
 		if (auto a_player = RE::PlayerCharacter::GetSingleton(); a_effect->target->GetTargetStatsObject() == a_player) {
 			auto weatherForm = RE::Sky::GetSingleton()->currentWeather;
 			auto disabledEntry = Utils::GetDisabledIniEntryFromForm(WeatherList, weatherForm);
-			if (disabledEntry != "") {
+			if (disabledEntry.first != "") {
 				// If weather is in the listed disable weathers then roll the chance to disable flashlight
-				auto disableChance = WeatherList.find(disabledEntry)->second;
+				auto disableChance = disabledEntry.second;
 				auto randomChance = Utils::GetRandomFloat(0.0, 1.0);
 				if (randomChance <= disableChance) {
 					// Don't add in Loading Menu

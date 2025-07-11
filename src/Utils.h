@@ -38,6 +38,6 @@ namespace Utils
 	}
 	std::string ConvertIniEntryToDecimal(std::string a_iniEntry);
 	std::uint32_t GetEditedFormID(std::uint32_t a_formID);
-	std::string GetDisabledIniEntryFromForm(std::unordered_map<std::string, float> a_umap, RE::TESForm* a_form);
-	std::string GetDisabledIniEntryFromForm(std::unordered_set<std::string> a_uset, RE::TESForm* a_form);
+	std::pair<std::string, float> GetDisabledIniEntryFromForm(std::unordered_map<std::string, float> a_list, RE::TESForm* a_form);
+	std::string GetDisabledIniEntryFromForm(std::unordered_set<std::string> a_list, RE::TESForm* a_form);
 }
