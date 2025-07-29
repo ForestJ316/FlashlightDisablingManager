@@ -4,8 +4,8 @@
   "homepage": "https://github.com/ForestJ316/FlashlightDisablingManager",
   "license": "GPL-3.0",
   "dependencies": [
-    "fmt",
     "mmio",
+    "rapidcsv",
     "simpleini",
     "spdlog"
   ],

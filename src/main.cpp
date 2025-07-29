@@ -79,7 +79,7 @@ namespace
 		F4SE::AllocTrampoline(256);
 
 		InitializeLog();
-		logger::info(FMT_STRING("{}: {}.{}.{}"), Version::NAME.data(), Version::MAJOR, Version::MINOR, Version::PATCH);
+		logger::info("{}: {}.{}.{}", Version::NAME.data(), Version::MAJOR, Version::MINOR, Version::PATCH);
 		logger::info("Game version: {}", a_f4se->RuntimeVersion().string());
 
 		if (!F4SE::GetMessagingInterface()->RegisterListener(MessageHandler)) {
