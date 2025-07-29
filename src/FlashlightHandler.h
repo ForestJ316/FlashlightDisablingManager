@@ -30,8 +30,8 @@ private:
 	static void PlayPipboyAudio(const char* a1);
 	static inline REL::Relocation<decltype(PlayPipboyAudio)> _PlayPipboyAudio;
 
-	static RE::BSTEventSource<RE::PipboyLightEvent>* NotifyPipboyLightEvent(RE::BSTEventSource<RE::PipboyLightEvent>* a1, const RE::PipboyLightEvent& a2);
-	static inline REL::Relocation<decltype(NotifyPipboyLightEvent)> _NotifyPipboyLightEvent;
+	static void NotifyPipboyLightEventLock(RE::BSSpinLock* a1, const char* a2);
+	static inline REL::Relocation<decltype(NotifyPipboyLightEventLock)> _NotifyPipboyLightEventLock;
 
 	// Vfunc
 	static void Update(RE::PlayerCharacter* a_player, float a_delta);

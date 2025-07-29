@@ -39,7 +39,7 @@ void CellHandler::Initialize()
 	RE::PlayerCharacter::GetSingleton()->RE::BSTEventSource<RE::BGSActorCellEvent>::RegisterSink(CellHandler::GetSingleton());
 	const auto UI = RE::UI::GetSingleton();
 	if (UI) {
-		UI->RegisterSink<RE::MenuOpenCloseEvent>(FaderMenuEvent::GetSingleton());
+		UI->RegisterSink<RE::MenuOpenCloseEvent>(LoadingMenuEvent::GetSingleton());
 	}
 
 	logger::info("...CellHandler initialized.");
@@ -53,11 +53,10 @@ CellHandler::EventResult CellHandler::ProcessEvent(const RE::BGSActorCellEvent& 
 
 		auto cellForm = RE::TESForm::GetFormByID<RE::TESObjectCELL>(a_event.cellID);
 		auto disabledEntry = Utils::GetDisabledIniEntryFromForm(CellList, cellForm);
-		logger::info("entered cell: {}, is disabled entry: {}", cellForm->formID, disabledEntry.c_str());
 		if (disabledEntry != "") {
 			bEnteredDisabledCell = true;
 			// Catch-all if cell changed without a Loading Menu
-			if (!UI->GetMenuOpen("LoadingMenu"sv) && !UI->GetMenuOpen("FaderMenu"sv) && !ActorHasSpell(a_player, CellDisableLightSpell)) {
+			if (!UI->GetMenuOpen("LoadingMenu"sv) && !ActorHasSpell(a_player, CellDisableLightSpell)) {
 				ActorAddSpell(a_player, CellDisableLightSpell);
 			}
 		}
@@ -65,8 +64,8 @@ CellHandler::EventResult CellHandler::ProcessEvent(const RE::BGSActorCellEvent& 
 			// If entered a non-disable cell and previous cell was a disable cell
 			if (bEnteredDisabledCell) {
 				bEnteredDisabledCell = false;
-				// Remove spell if no Loading Menu open, otherwise it will be removed after Fader Menu closes
-				if (!UI->GetMenuOpen("LoadingMenu"sv) && !UI->GetMenuOpen("FaderMenu"sv) && ActorHasSpell(a_player, CellDisableLightSpell)) {
+				// Remove spell if no Loading Menu open, otherwise it will be removed after Loading Menu closes
+				if (!UI->GetMenuOpen("LoadingMenu"sv) && ActorHasSpell(a_player, CellDisableLightSpell)) {
 					ActorRemoveSpell(RE::PlayerCharacter::GetSingleton(), CellDisableLightSpell);
 				}
 			}
@@ -75,9 +74,9 @@ CellHandler::EventResult CellHandler::ProcessEvent(const RE::BGSActorCellEvent& 
 	return EventResult::kContinue;
 }
 
-CellHandler::FaderMenuEvent::EventResult CellHandler::FaderMenuEvent::ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*)
+CellHandler::LoadingMenuEvent::EventResult CellHandler::LoadingMenuEvent::ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*)
 {
-	if (!a_event.opening && a_event.menuName == "FaderMenu"sv) {
+	if (!a_event.opening && a_event.menuName == "LoadingMenu"sv) {
 		auto cellHandler = CellHandler::GetSingleton();
 		auto a_player = RE::PlayerCharacter::GetSingleton();
 		if (cellHandler->bEnteredDisabledCell && !ActorHasSpell(a_player, CellDisableLightSpell)) {

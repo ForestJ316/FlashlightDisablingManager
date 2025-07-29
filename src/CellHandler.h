@@ -23,15 +23,15 @@ private:
 
 	bool bEnteredDisabledCell = false;
 
-	class FaderMenuEvent : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
+	class LoadingMenuEvent : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
 	{
 	private:
 		using EventResult = RE::BSEventNotifyControl;
 
 	public:
-		static FaderMenuEvent* GetSingleton()
+		static LoadingMenuEvent* GetSingleton()
 		{
-			static FaderMenuEvent singleton;
+			static LoadingMenuEvent singleton;
 			return std::addressof(singleton);
 		}
 		EventResult ProcessEvent(const RE::MenuOpenCloseEvent& a_event, RE::BSTEventSource<RE::MenuOpenCloseEvent>*);

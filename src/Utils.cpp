@@ -19,15 +19,13 @@ std::uint32_t Utils::GetEditedFormID(std::uint32_t a_formID)
 	hexForm << std::hex << a_formID;
 	auto hexStr = hexForm.str();
 	hexForm.str(std::string()); // Clear stringstream for next iteration
-	// If hex length is more than 6 digits
+	// Only check hex with more than 6 digits
 	if (hexStr.length() > 6) {
-		int firstDigit = -1;
-		// If it's 7 digits then check if it's a DLC Form
-		if (hexStr.length() == 7) {
-			firstDigit = std::stoi(hexStr.substr(0, 1), 0, 16); // Convert to int
-		}
+		// Max length is 8 digits, we care to check only the first 2
+		int firstDigits = std::stoi(hexStr.substr(0, hexStr.length() - 6), 0, 16);
 		// If it's not a DLC Form then keep the last 6 numbers only
-		if (firstDigit > 6 || firstDigit == -1) {
+		// DLC Forms go from 1 to 6
+		if (firstDigits > 6) {
 			hexStr = hexStr.substr(hexStr.length() - 6, hexStr.length());
 		}
 	}

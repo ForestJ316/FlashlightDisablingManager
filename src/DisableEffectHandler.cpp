@@ -30,7 +30,6 @@ void DisableEffectHandler::OnEffectStart(RE::ActiveEffect* a_effect)
 	if (a_effect->effect->effectSetting == FlashlightEffectID && a_effect->target->GetTargetStatsObject() == RE::PlayerCharacter::GetSingleton()) {
 		// Increment a counter instead of storing the unique ID
 		DisableEffectHandler::GetSingleton()->iActiveFlashlightEffectCount += 1;
-		logger::info("In DisableEffect Start, turning off flashlight");
 		// Turn on/off only after Fader Menu
 		const auto UI = RE::UI::GetSingleton();
 		if (!UI->GetMenuOpen("LoadingMenu"sv) && !UI->GetMenuOpen("FaderMenu"sv)) {
@@ -53,7 +52,6 @@ void DisableEffectHandler::OnEffectFinish(RE::ActiveEffect* a_effect)
 			effectHandler->iActiveFlashlightEffectCount -= 1;
 			// Don't do anything with the flashlight if the player is dead
 			if (effectHandler->iActiveFlashlightEffectCount == 0 && !RE::PlayerCharacter::GetSingleton()->IsDead(true)) {
-				logger::info("In DisableEffect Finish, turning on flashlight");
 				// Turn on/off only after Fader Menu
 				const auto UI = RE::UI::GetSingleton();
 				if (!UI->GetMenuOpen("LoadingMenu"sv) && !UI->GetMenuOpen("FaderMenu"sv)) {
@@ -76,7 +74,6 @@ void DisableEffectHandler::OnEffectFinishLoadGame(RE::ActiveEffect* a_effect)
 		&& a_effect->conditionStatus.any(RE::ActiveEffect::ConditionStatus::kTrue)) {
 		// Increment a counter instead of storing the unique ID
 		DisableEffectHandler::GetSingleton()->iActiveFlashlightEffectCount += 1;
-		logger::info("In DisableEffect FinishLoadGame, turning off flashlight");
 		// Turn on/off only after Fader Menu
 		const auto UI = RE::UI::GetSingleton();
 		if (!UI->GetMenuOpen("LoadingMenu"sv) && !UI->GetMenuOpen("FaderMenu"sv)) {
