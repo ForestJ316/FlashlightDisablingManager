@@ -313,6 +313,7 @@ void FlashlightHandler::ResetVars(bool a_fullDefault)
 {
 	if (a_fullDefault) {
 		bWasFlashlightOn = false;
+		hotkeySystemTimeSnapshot = std::chrono::time_point<std::chrono::system_clock>{}; // Reset to 1970-01-01
 	}
 	bQueuedToggle = std::queue<bool>();
 	sFlickerType = "";

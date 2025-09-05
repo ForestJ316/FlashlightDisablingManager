@@ -66,7 +66,7 @@ private:
 	static inline float fTimer = 0.f;
 	static inline float fNextFlicker = 0.f;
 	static inline std::queue<bool> bQueuedToggle;
-	std::chrono::time_point<std::chrono::system_clock> hotkeySystemTimeSnapshot = std::chrono::system_clock::now();
+	std::chrono::time_point<std::chrono::system_clock> hotkeySystemTimeSnapshot{}; // Initialized to 1970-01-01
 
 	static inline std::string sForceOnOff = "";
 };
