@@ -148,7 +148,12 @@ void FlashlightHandler::PipboyLightTaskUnpack(RE::PlayerCharacter* a_player, boo
 			if (RE::PlayerCharacter::GetSingleton()->IsPipboyLightOn()) {
 				_PipboyLightTaskUnpack(a_player, a_unk);
 			}
-			FlashlightHandler::GetSingleton()->InitFlashlightFlicker("Hotkey");
+			std::chrono::duration<float> fHotkeyDelay = std::chrono::system_clock::now() - FlashlightHandler::GetSingleton()->hotkeySystemTimeSnapshot;
+			// 10 second delay between hotkey flickers to prevent spamming
+			if (fHotkeyDelay.count() >= 10.f) {
+				FlashlightHandler::GetSingleton()->hotkeySystemTimeSnapshot = std::chrono::system_clock::now();
+				FlashlightHandler::GetSingleton()->InitFlashlightFlicker("Hotkey");
+			}
 		}
 		else if (DisableEffectHandler::GetSingleton()->iActiveFlashlightEffectCount == 0) {
 			_PipboyLightTaskUnpack(a_player, a_unk);

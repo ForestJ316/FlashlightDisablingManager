@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 
 set(NAME "FlashlightDisablingManager")
-set(VERSION 1.0.0)
+set(VERSION 1.0.1)
 
 
 # ---- Options ----
