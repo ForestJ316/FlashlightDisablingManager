@@ -1,6 +1,6 @@
 {
   "name": "flashlightdisablingmanager",
-  "version-string": "1.0.0",
+  "version-string": "1.0.1",
   "homepage": "https://github.com/ForestJ316/FlashlightDisablingManager",
   "license": "GPL-3.0",
   "dependencies": [
